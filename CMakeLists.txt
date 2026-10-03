@@ -22,8 +22,21 @@ set(BAKA_LANG "" CACHE STRING "Force a language code instead of using the system
 include(GNUInstallDirs)
 
 find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Network Svg OpenGL OpenGLWidgets LinguistTools)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(MPV REQUIRED IMPORTED_TARGET mpv)
+find_package(PkgConfig)
+# pkg-config is only used for hints: on MSYS2 it reports MSYS-style paths
+# (e.g. /ucrt64/include) that a native CMake cannot use directly
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(MPV_PC QUIET mpv)
+endif()
+find_path(MPV_INCLUDE_DIR mpv/client.h HINTS ${MPV_PC_INCLUDE_DIRS})
+find_library(MPV_LIBRARY NAMES mpv libmpv HINTS ${MPV_PC_LIBRARY_DIRS})
+if(NOT MPV_INCLUDE_DIR OR NOT MPV_LIBRARY)
+    message(FATAL_ERROR "libmpv not found (set CMAKE_PREFIX_PATH to its install prefix)")
+endif()
+add_library(mpv::mpv UNKNOWN IMPORTED)
+set_target_properties(mpv::mpv PROPERTIES
+    IMPORTED_LOCATION "${MPV_LIBRARY}"
+    INTERFACE_INCLUDE_DIRECTORIES "${MPV_INCLUDE_DIR}")
 
 qt_standard_project_setup()
 
@@ -114,7 +127,7 @@ target_include_directories(baka-mplayer PRIVATE src)
 set_target_properties(baka-mplayer PROPERTIES AUTOUIC_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/src/ui)
 target_link_libraries(baka-mplayer PRIVATE
     Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::Svg Qt6::OpenGL Qt6::OpenGLWidgets
-    PkgConfig::MPV)
+    mpv::mpv)
 
 if(UNIX AND NOT APPLE)
     find_package(X11)
