@@ -139,8 +139,10 @@ qt_add_translations(baka-mplayer
     RESOURCE_PREFIX /translations
     LUPDATE_OPTIONS -no-obsolete -locations none)
 
+if(APPLE)
+    set_target_properties(baka-mplayer PROPERTIES OUTPUT_NAME Baka-MPlayer)
+endif()
 set_target_properties(baka-mplayer PROPERTIES
-    OUTPUT_NAME $<IF:$<BOOL:${APPLE}>,Baka-MPlayer,baka-mplayer>
     MACOSX_BUNDLE_BUNDLE_NAME "Baka MPlayer"
     MACOSX_BUNDLE_GUI_IDENTIFIER "net.u8sand.baka-mplayer"
     MACOSX_BUNDLE_ICON_FILE logo.icns

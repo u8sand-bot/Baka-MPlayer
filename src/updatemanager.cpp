@@ -30,7 +30,7 @@ bool UpdateManager::CheckForUpdates()
     busy = true;
     emit messageSignal(tr("Checking for updates..."));
     emit progressSignal(0);
-    QNetworkRequest request(QUrl(Util::VersionFileUrl()));
+    QNetworkRequest request{QUrl{Util::VersionFileUrl()}};
     request.setRawHeader("Accept", "application/vnd.github+json");
     request.setHeader(QNetworkRequest::UserAgentHeader, QString("Baka-MPlayer/%0").arg(BAKA_MPLAYER_VERSION));
     QNetworkReply *reply = manager->get(request);
