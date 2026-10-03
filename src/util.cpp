@@ -1,16 +1,26 @@
 #include "util.h"
 
 #include <QTime>
-#include <QStringListIterator>
+#include <QRegularExpression>
+#include <QStringList>
 #include <QDir>
 
 namespace Util {
 
+QString VersionFileUrl()
+{
+    return "https://api.github.com/repos/u8sand/Baka-MPlayer/releases/latest";
+}
+
+QString DownloadFileUrl()
+{
+    return "https://github.com/u8sand/Baka-MPlayer/releases/latest";
+}
 
 bool IsValidUrl(QString url)
 {
-    QRegExp rx("^[a-z]{2,}://", Qt::CaseInsensitive); // url
-    return (rx.indexIn(url) != -1);
+    static const QRegularExpression rx("^[a-z]{2,}://", QRegularExpression::CaseInsensitiveOption); // url
+    return rx.match(url).hasMatch();
 }
 
 QString FormatTime(int _time, int _totalTime)

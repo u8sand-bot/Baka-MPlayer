@@ -1,7 +1,7 @@
 #include "util.h"
 
 #include <QApplication>
-#include <QRegExp>
+#include <QRegularExpression>
 #include <QProcess>
 #include <QDir>
 
@@ -11,11 +11,6 @@
 
 
 namespace Util {
-
-QString VersionFileUrl()
-{
-    return "http://bakamplayer.u8sand.net/version_windows";
-}
 
 bool DimLightsSupported()
 {
@@ -38,19 +33,19 @@ QString SettingsLocation()
 
 bool IsValidFile(QString path)
 {
-    QRegExp rx("^(\\.{1,2}|[a-z]:|\\\\\\\\)", Qt::CaseInsensitive); // relative path, network location, drive
-    return (rx.indexIn(path) != -1);
+    static const QRegularExpression rx("^(\\.{1,2}|[a-z]:|\\\\\\\\)", QRegularExpression::CaseInsensitiveOption); // relative path, network location, drive
+    return rx.match(path).hasMatch();
 }
 
 bool IsValidLocation(QString loc)
 {
-    QRegExp rx("^([a-z]{2,}://|\\.{1,2}|[a-z]:|\\\\\\\\)", Qt::CaseInsensitive); // url, relative path, network location, drive
-    return (rx.indexIn(loc) != -1);
+    static const QRegularExpression rx("^([a-z]{2,}://|\\.{1,2}|[a-z]:|\\\\\\\\)", QRegularExpression::CaseInsensitiveOption); // url, relative path, network location, drive
+    return rx.match(loc).hasMatch();
 }
 
 void ShowInFolder(QString path, QString file)
 {
-    QProcess::startDetached("explorer.exe", QStringList{"/select,", path+file});
+    QProcess::startDetached("explorer.exe", QStringList{"/select,", QDir::toNativeSeparators(path+file)});
 }
 
 QString MonospaceFont()

@@ -3,6 +3,7 @@
 #include <QApplication>
 #include <QLocale>
 #include <QString>
+#include <QSurfaceFormat>
 
 #include <locale.h>
 
@@ -14,6 +15,13 @@ int main(int argc, char *argv[])
 {
 #if defined(Q_OS_WIN)
     FreeConsole();
+#endif
+#if defined(Q_OS_MACOS)
+    // mpv needs a modern OpenGL context; macOS defaults to legacy 2.1
+    QSurfaceFormat format;
+    format.setVersion(3, 2);
+    format.setProfile(QSurfaceFormat::CoreProfile);
+    QSurfaceFormat::setDefaultFormat(format);
 #endif
     QApplication a(argc, argv);
     setlocale(LC_NUMERIC, "C"); // for mpv

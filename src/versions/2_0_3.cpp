@@ -106,8 +106,16 @@ void BakaEngine::Load2_0_3()
     mpv_json.remove("volume");
     mpv->Speed(QJsonValueRef2(mpv_json["speed"]).toDouble(1.0));
     mpv_json.remove("speed");
-    mpv->Vo(mpv_json["vo"].toString());
+    // legacy "vo" settings (e.g. "opengl-hq:interpolation") are no longer
+    // applicable: video is always rendered through MpvWidget (vo=libmpv)
+    if(mpv_json["vo"].toString().contains("interpolation"))
+    {
+        mpv_json["interpolation"] = "yes";
+        mpv_json["video-sync"] = "display-resample";
+    }
     mpv_json.remove("vo");
+    if(mpv_json["interpolation"].toString() == "yes")
+        mpv->setInterpolation(true);
     mpv->ScreenshotTemplate(QJsonValueRef2(mpv_json["screenshot-template"]).toString("screenshot%#04n"));
     mpv_json.remove("screenshot-template");
     mpv->ScreenshotDirectory(QJsonValueRef2(mpv_json["screenshot-directory"]).toString("."));
@@ -181,7 +189,17 @@ void BakaEngine::SaveSettings()
     QJsonObject mpv_json = root["mpv"].toObject();
     mpv_json["volume"] = mpv->volume;
     mpv_json["speed"] = mpv->speed;
-    mpv_json["vo"] = mpv->vo;
+    mpv_json.remove("vo");
+    if(mpv->interpolation)
+    {
+        mpv_json["interpolation"] = "yes";
+        mpv_json["video-sync"] = "display-resample";
+    }
+    else
+    {
+        mpv_json.remove("interpolation");
+        mpv_json.remove("video-sync");
+    }
     mpv_json["screenshot-format"] = mpv->screenshotFormat;
     mpv_json["screenshot-template"] = mpv->screenshotTemplate;
     mpv_json["screenshot-directory"] = QDir::fromNativeSeparators(mpv->screenshotDir);

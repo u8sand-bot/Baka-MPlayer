@@ -1,44 +1,49 @@
 #include "util.h"
 #include "settings.h"
 
-#include <QRegExp>
+#include <QRegularExpression>
 #include <QStandardPaths>
 #include <QDesktopServices>
 #include <QDir>
 #include <QUrl>
 #include <QGuiApplication>
 
-#include <QX11Info>
+#if defined(BAKA_HAVE_X11) && QT_CONFIG(xcb)
 #include <X11/Xlib.h>
+#define BAKA_X11 1
+#endif
 
 namespace Util {
 
-QString VersionFileUrl()
+#ifdef BAKA_X11
+static Display *X11Display()
 {
-    return "http://bakamplayer.u8sand.net/version_linux";
+    if(auto *x11 = qApp->nativeInterface<QNativeInterface::QX11Application>())
+        return x11->display();
+    return nullptr;
 }
-
-QString DownloadFileUrl()
-{
-    return "";
-}
+#endif
 
 bool DimLightsSupported()
 {
-    if(QGuiApplication::platformName().contains("wayland"))
+#ifdef BAKA_X11
+    Display *display = X11Display();
+    if(!display)
         return false;
-    QString tmp = "_NET_WM_CM_S"+QString::number(QX11Info::appScreen());
-    Atom a = XInternAtom(QX11Info::display(), tmp.toUtf8().constData(), false);
-    if(a && XGetSelectionOwner(QX11Info::display(), a)) // hack for QX11Info::isCompositingManagerRunning()
+    QString tmp = "_NET_WM_CM_S"+QString::number(DefaultScreen(display));
+    Atom a = XInternAtom(display, tmp.toUtf8().constData(), false);
+    if(a && XGetSelectionOwner(display, a)) // is a compositing manager running?
         return true;
+#endif
     return false;
 }
 
 void SetAlwaysOnTop(WId wid, bool ontop)
 {
-    if(QGuiApplication::platformName().contains("wayland"))
-        return;
-    Display *display = QX11Info::display();
+#ifdef BAKA_X11
+    Display *display = X11Display();
+    if(!display)
+        return; // not supported on wayland
     XEvent event;
     event.xclient.type = ClientMessage;
     event.xclient.serial = 0;
@@ -56,13 +61,16 @@ void SetAlwaysOnTop(WId wid, bool ontop)
 
     XSendEvent(display, DefaultRootWindow(display), False,
                            SubstructureRedirectMask|SubstructureNotifyMask, &event);
+    XFlush(display);
+#else
+    Q_UNUSED(wid);
+    Q_UNUSED(ontop);
+#endif
 }
 
 QString SettingsLocation()
 {
     // saves to  ~/.config/${SETTINGS_FILE}.ini
-    QString s1  = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
-    QString s2 = SETTINGS_FILE;
     return QString("%0/%1.ini").arg(
             QStandardPaths::writableLocation(QStandardPaths::ConfigLocation),
             SETTINGS_FILE);
@@ -70,19 +78,19 @@ QString SettingsLocation()
 
 bool IsValidFile(QString path)
 {
-    QRegExp rx("^\\.{1,2}|/", Qt::CaseInsensitive); // relative path, network location, drive
-    return (rx.indexIn(path) != -1);
+    static const QRegularExpression rx("^\\.{1,2}|/", QRegularExpression::CaseInsensitiveOption); // relative path, network location, drive
+    return rx.match(path).hasMatch();
 }
 
 bool IsValidLocation(QString loc)
 {
-    QRegExp rx("^([a-z]{2,}://|\\.{1,2}|/)", Qt::CaseInsensitive); // url, relative path, drive
-    return (rx.indexIn(loc) != -1);
+    static const QRegularExpression rx("^([a-z]{2,}://|\\.{1,2}|/)", QRegularExpression::CaseInsensitiveOption); // url, relative path, absolute path
+    return rx.match(loc).hasMatch();
 }
 
 void ShowInFolder(QString path, QString)
 {
-    QDesktopServices::openUrl(QString("file:///%0").arg(path));
+    QDesktopServices::openUrl(QUrl::fromLocalFile(path));
 }
 
 QString MonospaceFont()

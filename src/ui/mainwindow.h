@@ -14,10 +14,6 @@
 #include <QAction>
 #include <QRect>
 
-#if defined(Q_OS_WIN)
-#include <QWinThumbnailToolBar>
-#include <QWinThumbnailToolButton>
-#endif
 
 #include "recent.h"
 
@@ -63,6 +59,7 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event);     // released mouse up
     void mouseMoveEvent(QMouseEvent *event);        // moved mouse on the form
     void leaveEvent(QEvent *event);                 // mouse left the form
+    void SendMouseMove();                           // synthesize a mouse move at the cursor
     void mouseDoubleClickEvent(QMouseEvent *event); // double clicked the form
     bool eventFilter(QObject *obj, QEvent *event);  // event filter (get mouse move events from mpvFrame)
     void wheelEvent(QWheelEvent *event);            // the mouse wheel is used
@@ -88,12 +85,6 @@ private:
     BakaEngine      *baka;
     MpvHandler      *mpv;
 
-#if defined(Q_OS_WIN)
-    QWinThumbnailToolBar    *thumbnail_toolbar;
-    QWinThumbnailToolButton *prev_toolbutton,
-                            *playpause_toolbutton,
-                            *next_toolbutton;
-#endif
     bool            pathChanged,
                     menuVisible,
                     firstItem       = false,

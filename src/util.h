@@ -11,9 +11,6 @@ class Settings;
 namespace Util {
 
 // platform specific
-QString VersionFileUrl();
-QString DownloadFileUrl();
-
 bool DimLightsSupported();
 void SetAlwaysOnTop(WId wid, bool);
 QString SettingsLocation();
@@ -26,6 +23,8 @@ void ShowInFolder(QString path, QString file);
 QString MonospaceFont();
 
 // common
+QString VersionFileUrl();
+QString DownloadFileUrl();
 bool IsValidUrl(QString url);
 
 QString FormatTime(int time, int totalTime);

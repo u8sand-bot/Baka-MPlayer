@@ -93,7 +93,7 @@ void OverlayHandler::showText(const QString &text, QFont font, QColor color, QPo
     int w = 0,
         h = fm.height()*lines.length();
     for(auto line : lines)
-        w = std::max(fm.width(line), w);
+        w = std::max(fm.horizontalAdvance(line), w);
     float xF = float(baka->window->ui->mpvFrame->width()-2*pos.x()) / (fm_correction*w);
     float yF = float(baka->window->ui->mpvFrame->height()-2*pos.y()) / h;
     font.setPointSizeF(std::min(font.pointSizeF()*std::min(xF, yF), font.pointSizeF()));
@@ -130,7 +130,7 @@ void OverlayHandler::showText(const QString &text, QFont font, QColor color, QPo
 
     // add over mpv as label
     QLabel *label = new QLabel(baka->window->ui->mpvFrame);
-    label->setStyleSheet("background-color:rgb(0,0,0,0);background-image:url();");
+    label->setStyleSheet("background-color:rgba(0,0,0,0);background-image:url();");
     label->setGeometry(pos.x(),
                        pos.y(),
                        canvas->width(),

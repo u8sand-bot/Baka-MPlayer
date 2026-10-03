@@ -12,18 +12,14 @@ class UpdateManager : public QObject
 {
     Q_OBJECT
 public:
-    explicit UpdateManager(QObject *parent = 0);
+    explicit UpdateManager(QObject *parent = nullptr);
     ~UpdateManager();
 
+    // keys: version, bugfixes, url
     const QMap<QString, QString> &getInfo() { return info; }
 
 public slots:
     bool CheckForUpdates();
-
-#if defined(Q_OS_WIN)
-    bool DownloadUpdate(const QString &url);
-    void ApplyUpdate(const QString &file);
-#endif
 
 signals:
     void progressSignal(int percent);

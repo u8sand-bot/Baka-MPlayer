@@ -1,0 +1,14 @@
+ (+) Video --vid=1 (*) (h264 640x360 25.000fps)
+ (+) Audio --aid=1 (*) (aac 1ch 44100Hz)
+error: XDG_RUNTIME_DIR is invalid or not set in the environment.
+libEGL warning: DRI3 error: Could not get DRI3 device
+libEGL warning: Ensure your X server supports DRI3 to get accelerated rendering
+[vo/gpu/opengl] Suspected software renderer or indirect context.
+[vo/gpu/drm] Can't open TTY for VT control: No such device or address
+[vo/gpu/drm] Failed to set up VT switcher. Terminal switching will be unavailable.
+[vo/gpu/drm] Listing DRM devices with drmGetDevices failed! (No such file or directory)
+[vo/gpu/drm] Failed to find a usable DRM primary node!
+[vo/gpu] Failed initializing any suitable GPU context!
+Error opening/initializing the selected video_out (--vo) device.
+Video: no video
+Exiting... (Errors when loading file)

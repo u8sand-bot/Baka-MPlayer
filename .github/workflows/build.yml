@@ -1,0 +1,106 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - '**'
+    paths-ignore:
+    - 'website/**'
+  pull_request:
+    paths-ignore:
+    - 'website/**'
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          cmake ninja-build g++ pkgconf libmpv-dev libx11-dev libgl-dev \
+          qt6-base-dev qt6-svg-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools
+
+    - name: Build
+      run: |
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+        cmake --build build
+
+    - name: Install
+      run: DESTDIR="$PWD/dist" cmake --install build
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: baka-mplayer-linux-x86_64
+        path: dist
+
+  macos:
+    runs-on: macos-14
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install dependencies
+      run: brew install qt mpv pkgconf ninja
+
+    - name: Build
+      run: |
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(brew --prefix qt)"
+        cmake --build build
+
+    - name: Package
+      run: |
+        "$(brew --prefix qt)/bin/macdeployqt" build/Baka-MPlayer.app -dmg
+        mv build/Baka-MPlayer.dmg Baka-MPlayer-macos-arm64.dmg
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: baka-mplayer-macos-arm64
+        path: Baka-MPlayer-macos-arm64.dmg
+
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+    - uses: actions/checkout@v7
+
+    - uses: msys2/setup-msys2@v2
+      with:
+        msystem: UCRT64
+        update: true
+        install: >-
+          mingw-w64-ucrt-x86_64-toolchain
+          mingw-w64-ucrt-x86_64-cmake
+          mingw-w64-ucrt-x86_64-ninja
+          mingw-w64-ucrt-x86_64-pkgconf
+          mingw-w64-ucrt-x86_64-qt6-base
+          mingw-w64-ucrt-x86_64-qt6-svg
+          mingw-w64-ucrt-x86_64-qt6-tools
+          mingw-w64-ucrt-x86_64-qt6-translations
+          mingw-w64-ucrt-x86_64-mpv
+
+    - name: Build
+      run: |
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        cmake --build build
+
+    - name: Package
+      run: |
+        mkdir -p dist
+        cp build/baka-mplayer.exe dist/
+        windeployqt=$(command -v windeployqt6 || command -v windeployqt-qt6 || command -v windeployqt)
+        "$windeployqt" --release --no-compiler-runtime dist/baka-mplayer.exe
+        # copy every non-system DLL the player (and the deployed Qt plugins) depend on
+        for f in dist/baka-mplayer.exe $(find dist -name '*.dll'); do
+          ldd "$f" | awk '{print $3}' | grep -i '^/ucrt64/' || true
+        done | sort -u | xargs -r -I{} cp -n {} dist/
+        cp LICENSE dist/
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: baka-mplayer-windows-x86_64
+        path: dist

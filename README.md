@@ -2,7 +2,7 @@
 
 ![](https://github.com/u8sand/Baka-MPlayer/raw/master/website/screenshots/img-2.png "Main Screenshot")
 
-[![Build Status](https://travis-ci.org/u8sand/Baka-MPlayer.svg?branch=master)](https://travis-ci.org/u8sand/Baka-MPlayer)
+[![Build](https://github.com/u8sand/Baka-MPlayer/actions/workflows/build.yml/badge.svg)](https://github.com/u8sand/Baka-MPlayer/actions/workflows/build.yml)
 
 
 ## Overview
@@ -13,101 +13,90 @@ Its simple design reflects the idea for an uncluttered, simple, and enjoyable en
 
 ## Requirements
 
-* gcc
+* A C++17 compiler (gcc, clang, or MSVC/MinGW)
+* CMake (>= 3.16)
 * pkg-config
-* libmpv-dev
-* qtbase5-dev (>= 5.2.0)
-  * qt5-qmake
-  * qttools5-dev-tools
-  * qtdeclarative5-dev
-  * libqt5svg5-dev
-  * libqt5x11extras5-dev
-  * libqt5network5
-* youtube-dl (optional, for streaming youtube videos)
-
-Note: Packages may be named slightly different for each distro
+* libmpv (mpv >= 0.33, with the OpenGL render API)
+* Qt 6 (>= 6.2): Core, Gui, Widgets, Network, Svg, OpenGL, OpenGLWidgets, LinguistTools
+* libX11 (Linux, optional: enables "always on top" and "dim lights" on X11)
+* yt-dlp (optional, for streaming online videos)
 
 ### Get the font
 
 Baka MPlayer was designed around the font called Noto Sans. Noto Sans was used because of its open source nature and its broad support for Unicode characters. Having the correct font installed insures that what you see is what was intended.
 
-[Get it here.](https://www.google.com/get/noto/#sans-lgc)
+[Get it here.](https://fonts.google.com/noto/specimen/Noto+Sans)
 
 
 ## Compilation
 
-### Windows
-
-These instructions are for cross-compiling for Windows on a Linux system (Note: the architecture can be either `x86_64` or `i686` depending on which platform you're compiling for).
+All platforms use the same CMake build:
 ```
-git clone -b release https://github.com/u8sand/Baka-MPlayer.git
-cd "Baka-MPlayer"
-mkdir build
-cp -r windows/cross-compilation/* build/
-cd build
-arch=x86_64
-./baka-build.sh $arch
+git clone https://github.com/u8sand/Baka-MPlayer.git
+cd Baka-MPlayer
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
-This is a very long process because you'll need to build the mingw32 toolchain `mxe` and all dependent libraries, `libmpv.a`, and finally `baka-mplayer.exe`. If everything succeeded without error, you'll get `Baka-MPlayer.$arch.zip` which should contain everything you need.
+Translations are compiled and embedded into the binary automatically.
 
-To rebuild simply delete the directory (in build) or the .zip file of what you need to rebuild and re-run `./baka-build.sh $arch`.
+Build options:
 
-To add custom patches, put them in `src/patches/` prefixed with the name of what you're patching.
+| Option | Default | Description |
+| --- | --- | --- |
+| `BAKA_SETTINGS_FILE` | `bakamplayer` | Settings file name (without `.ini`) |
+| `BAKA_LANG` | *(locale)* | Force a language code instead of using the system locale |
+| `CMAKE_INSTALL_PREFIX` | `/usr/local` | Installation prefix |
 
 ### Linux
 
-If your distribution does not provide a package, you can compile it from source.
-However we've made scripts for some distributions. See `etc/sbin/linux/`.
+Install the dependencies. On Debian/Ubuntu (24.04 or newer):
 ```
-git clone -b release https://github.com/u8sand/Baka-MPlayer.git
-cd "Baka-MPlayer"
-mkdir build
-cp -r linux/* build/
-cd build
-distro=debian_based
-chmod +x $distro.sh 
-./$distro.sh
+sudo apt install cmake g++ pkgconf libmpv-dev libx11-dev libgl-dev \
+    qt6-base-dev qt6-svg-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools
 ```
-If this doesn't work or the distro you use is not listed here, you'll need to build mpv and then Baka MPlayer (the dependencies above are for Baka MPlayer). For help building mpv see `https://github.com/mpv-player/mpv-build`. Compiling Baka MPlayer from source can be done like so:
+On Fedora:
 ```
-git clone -b release https://github.com/u8sand/Baka-MPlayer.git
-cd "Baka-MPlayer"
-./configure
-make -j `grep -c ^processor /proc/cpuinfo`
-sudo make install
+sudo dnf install cmake gcc-c++ pkgconf mpv-libs-devel libX11-devel \
+    qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel
 ```
-The configuration file will be created on first run and will be written to `~/.config/bakamplayer.ini`.
+On Arch Linux:
+```
+sudo pacman -S cmake mpv qt6-base qt6-svg qt6-tools libx11
+```
+Then build as above and install:
+```
+sudo cmake --install build
+```
+Both X11 and Wayland are supported. The configuration file will be created on first run and will be written to `~/.config/bakamplayer.ini`.
+
+### Windows
+
+Builds use [MSYS2](https://www.msys2.org/). From a UCRT64 shell:
+```
+pacman -S mingw-w64-ucrt-x86_64-{toolchain,cmake,ninja,pkgconf,qt6-base,qt6-svg,qt6-tools,mpv}
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+Run `windeployqt6 build/baka-mplayer.exe` and copy the remaining DLLs from `/ucrt64/bin` (see `.github/workflows/build.yml`) to make a portable folder. The configuration file is written next to the executable.
 
 ### macOS
 
-As of right now you have to compile from source.
-You require some more dependencies which you can get from homebrew:
+Install the dependencies with [Homebrew](https://brew.sh/):
 ```
-brew install youtube-dl
-brew install mpv --with-libmpv
-git clone -b release https://github.com/u8sand/Baka-MPlayer.git
-cd Baka-MPlayer
-export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
-brew install qt5
-export QMAKE=/usr/local/Cellar/qt5/5*/bin/qmake
-./configure CONFIG+=install_translations
-make
-open build
+brew install cmake pkgconf qt mpv
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(brew --prefix qt)"
+cmake --build build
+"$(brew --prefix qt)/bin/macdeployqt" build/Baka-MPlayer.app
 ```
-Then drag the app to your Applications folder.
-In the future there will be a brew formula to simplify this.
+Then drag `build/Baka-MPlayer.app` to your Applications folder.
 
-Similarly to Linux, the configuration file will be created on first run and will be written to `~/.config/bakamplayer.ini`.
+### Prebuilt binaries
+
+Every push is built for Linux, Windows and macOS by [GitHub Actions](.github/workflows/build.yml); the binaries are attached to each run as artifacts.
 
 ### Other languages
 
-By default, Baka MPlayer will compile in English if no language is specified during compilation. To compile a multi-lingual version of baka-mplayer, configure it like so:
-
-    ./configure CONFIG+=install_translations
-
-For more configuration options see the `configure` source file or read the manual.
-
-You can check out which languages we currently support by checking out `Baka-MPlayer/src/translations/`.
+You can check out which languages we currently support in `src/translations/`. See [DOCS/translations.md](DOCS/translations.md) to contribute one.
 
 
 ## Bug reports
