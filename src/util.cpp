@@ -26,13 +26,17 @@ QString FindYtdl()
     // usual install locations, and finally next to our own executable where
     // the release builds bundle a copy.
     const QString home = QDir::homePath();
-    const QStringList extraPaths = {
+    QStringList extraPaths = {
         "/opt/homebrew/bin",
         "/usr/local/bin",
         "/opt/local/bin",
         home + "/.local/bin",
         home + "/bin"
     };
+    // pip install --user on macOS
+    const QDir userPython(home + "/Library/Python");
+    for(const QString &version : userPython.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name | QDir::Reversed))
+        extraPaths << userPython.filePath(version + "/bin");
     const QStringList names = {"yt-dlp", "yt-dlp_macos", "youtube-dl"};
     for(const QString &name : names)
     {
