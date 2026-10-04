@@ -90,7 +90,21 @@ jobs:
           mingw-w64-ucrt-x86_64-toolchain
           mingw-w64-ucrt-x86_64-cmake
           mingw-w64-ucrt-x86_64-ninja
+          mingw-w64-ucrt-x86_64-pkgconf
           mingw-w64-ucrt-x86_64-qt6-static
+          mingw-w64-ucrt-x86_64-brotli
+          mingw-w64-ucrt-x86_64-bzip2
+          mingw-w64-ucrt-x86_64-double-conversion
+          mingw-w64-ucrt-x86_64-freetype
+          mingw-w64-ucrt-x86_64-graphite2
+          mingw-w64-ucrt-x86_64-harfbuzz
+          mingw-w64-ucrt-x86_64-libb2
+          mingw-w64-ucrt-x86_64-libjpeg-turbo
+          mingw-w64-ucrt-x86_64-libpng
+          mingw-w64-ucrt-x86_64-md4c
+          mingw-w64-ucrt-x86_64-pcre2
+          mingw-w64-ucrt-x86_64-zlib
+          mingw-w64-ucrt-x86_64-zstd
           p7zip
 
     - name: Download libmpv
@@ -116,6 +130,7 @@ jobs:
           -DCMAKE_PREFIX_PATH=/ucrt64/qt6-static \
           -DMPV_INCLUDE_DIR="$PWD/mpv-dev/include" \
           -DMPV_LIBRARY="$PWD/mpv-dev/libmpv.dll.a" \
+          -DCMAKE_FIND_LIBRARY_SUFFIXES=".a" \
           -DCMAKE_EXE_LINKER_FLAGS="-static"
         cmake --build build
 
