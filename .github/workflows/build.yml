@@ -105,7 +105,23 @@ jobs:
           mingw-w64-ucrt-x86_64-pcre2
           mingw-w64-ucrt-x86_64-zlib
           mingw-w64-ucrt-x86_64-zstd
+          mingw-w64-ucrt-x86_64-libwebp
+          mingw-w64-ucrt-x86_64-libtiff
+          mingw-w64-ucrt-x86_64-libdeflate
+          mingw-w64-ucrt-x86_64-jbigkit
+          mingw-w64-ucrt-x86_64-lerc
+          mingw-w64-ucrt-x86_64-xz
+          mingw-w64-ucrt-x86_64-openssl
+          mingw-w64-ucrt-x86_64-vulkan-headers
           p7zip
+
+    - name: Show static Qt dependencies
+      run: |
+        pacman -Si mingw-w64-ucrt-x86_64-qt6-static | grep -E '^(Version|Depends On)'
+        echo "Third-party packages the Qt modules look for:"
+        for m in Core Gui Widgets Network Svg OpenGL OpenGLWidgets; do
+          cat /ucrt64/qt6-static/lib/cmake/Qt6$m/Qt6${m}Dependencies.cmake 2>/dev/null
+        done | grep -oE "Wrap[A-Za-z0-9]+" | sort -u || true
 
     - name: Download libmpv
       env:
