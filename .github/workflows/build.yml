@@ -52,8 +52,16 @@ jobs:
 
     - name: Package
       run: |
-        "$(brew --prefix qt)/bin/macdeployqt" build/Baka-MPlayer.app -dmg
-        mv build/Baka-MPlayer.dmg Baka-MPlayer-macos-arm64.dmg
+        "$(brew --prefix qt)/bin/macdeployqt" build/Baka-MPlayer.app
+        # macdeployqt rewrites the bundled libraries, which invalidates their
+        # signatures; Apple Silicon refuses to run them ("app is damaged").
+        # Re-sign everything ad-hoc (no Apple Developer ID available).
+        codesign --force --deep --sign - build/Baka-MPlayer.app
+        codesign --verify --deep --strict --verbose=2 build/Baka-MPlayer.app
+        mkdir dmg
+        cp -R build/Baka-MPlayer.app dmg/
+        ln -s /Applications dmg/Applications
+        hdiutil create -volname "Baka MPlayer" -srcfolder dmg -format UDZO Baka-MPlayer-macos-arm64.dmg
 
     - uses: actions/upload-artifact@v4
       with:

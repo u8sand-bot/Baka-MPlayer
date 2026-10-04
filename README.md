@@ -90,6 +90,12 @@ cmake --build build
 ```
 Then drag `build/Baka-MPlayer.app` to your Applications folder.
 
+The prebuilt macOS app is ad-hoc signed but not notarized, so macOS will block it the first time.
+After copying it to Applications, either right-click it and choose **Open**, or run:
+```
+xattr -dr com.apple.quarantine /Applications/Baka-MPlayer.app
+```
+
 ### Prebuilt binaries
 
 Every push is built for Linux, Windows and macOS by [GitHub Actions](.github/workflows/build.yml); the binaries are attached to each run as artifacts.
