@@ -71,13 +71,17 @@ Both X11 and Wayland are supported. The configuration file will be created on fi
 
 ### Windows
 
-Builds use [MSYS2](https://www.msys2.org/). From a UCRT64 shell:
+Builds use [MSYS2](https://www.msys2.org/) with a static Qt, and the self-contained libmpv from
+[mpv-winbuild](https://github.com/shinchiro/mpv-winbuild-cmake/releases) (the `mpv-dev-x86_64-*.7z` archive).
+From a UCRT64 shell, with the archive extracted to `mpv-dev`:
 ```
-pacman -S mingw-w64-ucrt-x86_64-{toolchain,cmake,ninja,pkgconf,qt6-base,qt6-svg,qt6-tools,mpv}
-cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+pacman -S mingw-w64-ucrt-x86_64-{toolchain,cmake,ninja,qt6-static}
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/ucrt64/qt6-static \
+    -DMPV_INCLUDE_DIR="$PWD/mpv-dev/include" -DMPV_LIBRARY="$PWD/mpv-dev/libmpv.dll.a" \
+    -DCMAKE_EXE_LINKER_FLAGS=-static
 cmake --build build
 ```
-Run `windeployqt6 build/baka-mplayer.exe` and copy the remaining DLLs from `/ucrt64/bin` (see `.github/workflows/build.yml`) to make a portable folder. The configuration file is written next to the executable.
+Put `build/baka-mplayer.exe` next to `mpv-dev/libmpv-2.dll` (and optionally `yt-dlp.exe`) and it is ready to run. The configuration file is written next to the executable.
 
 ### macOS
 

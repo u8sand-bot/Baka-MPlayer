@@ -80,6 +80,8 @@ jobs:
     steps:
     - uses: actions/checkout@v7
 
+    # Qt is linked statically and libmpv comes from shinchiro's mpv-winbuild,
+    # a single self-contained DLL, so the package is just a handful of files.
     - uses: msys2/setup-msys2@v2
       with:
         msystem: UCRT64
@@ -88,31 +90,66 @@ jobs:
           mingw-w64-ucrt-x86_64-toolchain
           mingw-w64-ucrt-x86_64-cmake
           mingw-w64-ucrt-x86_64-ninja
-          mingw-w64-ucrt-x86_64-pkgconf
-          mingw-w64-ucrt-x86_64-qt6-base
-          mingw-w64-ucrt-x86_64-qt6-svg
-          mingw-w64-ucrt-x86_64-qt6-tools
-          mingw-w64-ucrt-x86_64-qt6-translations
-          mingw-w64-ucrt-x86_64-mpv
+          mingw-w64-ucrt-x86_64-qt6-static
+          p7zip
+
+    - name: Download libmpv
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        release=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
+          https://api.github.com/repos/shinchiro/mpv-winbuild-cmake/releases/latest)
+        url=$(echo "$release" | grep -oE 'https://[^"]*/mpv-dev-x86_64-[0-9]{8}-git-[0-9a-f]+\.7z' | head -n1)
+        if [ -z "$url" ]; then
+          echo "Could not find an mpv-dev-x86_64 asset; available assets:"
+          echo "$release" | grep -oE '"name": *"[^"]*"'
+          exit 1
+        fi
+        echo "Using $url"
+        curl -fsSL -o mpv-dev.7z "$url"
+        7z x -ompv-dev mpv-dev.7z > /dev/null
+        ls mpv-dev
 
     - name: Build
       run: |
-        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_PREFIX_PATH=/ucrt64/qt6-static \
+          -DMPV_INCLUDE_DIR="$PWD/mpv-dev/include" \
+          -DMPV_LIBRARY="$PWD/mpv-dev/libmpv.dll.a" \
+          -DCMAKE_EXE_LINKER_FLAGS="-static"
         cmake --build build
 
     - name: Package
       run: |
         mkdir -p dist
-        cp build/baka-mplayer.exe dist/
-        windeployqt=$(command -v windeployqt6 || command -v windeployqt-qt6 || command -v windeployqt)
-        "$windeployqt" --release --no-compiler-runtime dist/baka-mplayer.exe
-        # copy every non-system DLL the player (and the deployed Qt plugins) depend on
-        for f in dist/baka-mplayer.exe $(find dist -name '*.dll'); do
-          ldd "$f" | awk '{print $3}' | grep -i '^/ucrt64/' || true
-        done | sort -u | xargs -r -I{} cp -n {} dist/
-        cp LICENSE dist/
+        cp build/baka-mplayer.exe mpv-dev/libmpv-2.dll LICENSE dist/
         # bundle yt-dlp for online streams (used when none is installed)
         curl -fsSL -o dist/yt-dlp.exe https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe
+        ls -la dist
+
+    - name: Check DLL dependencies
+      run: |
+        # Fail if anything depends on a DLL we don't ship and that isn't part
+        # of Windows. (The build machine has extra DLLs such as vulkan-1.dll
+        # installed system-wide, so "it runs on CI" proves nothing.)
+        shipped=$(ls dist | tr 'A-Z' 'a-z')
+        bad=0
+        for f in dist/baka-mplayer.exe dist/libmpv-2.dll; do
+          echo "== $f"
+          for dll in $(objdump -p "$f" | awk '/DLL Name:/ {print tolower($3)}'); do
+            echo "   $dll"
+            if echo "$shipped" | grep -qx "$dll"; then continue; fi
+            case "$dll" in
+              api-ms-win-*|ext-ms-*) continue ;;
+            esac
+            if [ -f "/c/Windows/System32/$dll" ] && [ "$dll" != "vulkan-1.dll" ] && [ ! -f "/ucrt64/bin/$dll" ]; then
+              continue
+            fi
+            echo "   ^ not shipped and not a Windows system DLL"
+            bad=1
+          done
+        done
+        exit $bad
 
     - uses: actions/upload-artifact@v4
       with:
