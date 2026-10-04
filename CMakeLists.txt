@@ -19,6 +19,12 @@ endif()
 set(BAKA_SETTINGS_FILE "bakamplayer" CACHE STRING "Settings file name (without extension)")
 set(BAKA_LANG "" CACHE STRING "Force a language code instead of using the system locale")
 
+option(BAKA_STATIC_DEPS "Link third-party libraries statically (for a static Qt build)" OFF)
+if(BAKA_STATIC_DEPS)
+    # must be set here: the platform modules override a -D cache value
+    set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+endif()
+
 include(GNUInstallDirs)
 
 find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Network Svg OpenGL OpenGLWidgets LinguistTools)

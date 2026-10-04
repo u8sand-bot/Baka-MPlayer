@@ -113,6 +113,7 @@ jobs:
           mingw-w64-ucrt-x86_64-xz
           mingw-w64-ucrt-x86_64-openssl
           mingw-w64-ucrt-x86_64-vulkan-headers
+          mingw-w64-ucrt-x86_64-vulkan-loader
           p7zip
 
     - name: Show static Qt dependencies
@@ -142,11 +143,26 @@ jobs:
 
     - name: Build
       run: |
+        # static archives don't record their own dependencies; append the
+        # transitive libraries of Qt's third-party deps to the link line
+        # (this variable replaces CMake's default system libraries, so keep them)
+        extra="-lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32"
+        for m in freetype2 harfbuzz libpng libtiff-4 libwebp libwebpdemux libwebpmux \
+                 libjpeg openssl libbrotlidec libb2 libpcre2-16 libzstd zlib; do
+          if pkg-config --exists $m; then
+            extra="$extra $(pkg-config --static --libs-only-l $m)"
+          else
+            echo "pkg-config: $m not found"
+          fi
+        done
+        extra=$(echo $extra | tr ' ' '\n' | awk '!seen[$0]++' | tr '\n' ' ')
+        echo "Extra libraries: $extra"
         cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+          -DBAKA_STATIC_DEPS=ON \
+          -DCMAKE_CXX_STANDARD_LIBRARIES="$extra" \
           -DCMAKE_PREFIX_PATH=/ucrt64/qt6-static \
           -DMPV_INCLUDE_DIR="$PWD/mpv-dev/include" \
           -DMPV_LIBRARY="$PWD/mpv-dev/libmpv.dll.a" \
-          -DCMAKE_FIND_LIBRARY_SUFFIXES=".a" \
           -DCMAKE_EXE_LINKER_FLAGS="-static"
         cmake --build build
 
@@ -154,6 +170,10 @@ jobs:
       run: |
         mkdir -p dist
         cp build/baka-mplayer.exe mpv-dev/libmpv-2.dll LICENSE dist/
+        # libmpv loads the Vulkan loader, which only exists on machines whose
+        # GPU driver installed it; ship the Khronos loader (mpv falls back to
+        # D3D11/OpenGL when no Vulkan driver is present)
+        cp /ucrt64/bin/vulkan-1.dll dist/
         # bundle yt-dlp for online streams (used when none is installed)
         curl -fsSL -o dist/yt-dlp.exe https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe
         ls -la dist
@@ -165,7 +185,8 @@ jobs:
         # installed system-wide, so "it runs on CI" proves nothing.)
         shipped=$(ls dist | tr 'A-Z' 'a-z')
         bad=0
-        for f in dist/baka-mplayer.exe dist/libmpv-2.dll; do
+        for f in dist/*.exe dist/*.dll; do
+          [ "$(basename $f)" = yt-dlp.exe ] && continue
           echo "== $f"
           for dll in $(objdump -p "$f" | awk '/DLL Name:/ {print tolower($3)}'); do
             echo "   $dll"
