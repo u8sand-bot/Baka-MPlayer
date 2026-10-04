@@ -4,6 +4,8 @@
 #include <QRegularExpression>
 #include <QStringList>
 #include <QDir>
+#include <QCoreApplication>
+#include <QStandardPaths>
 
 namespace Util {
 
@@ -15,6 +17,38 @@ QString VersionFileUrl()
 QString DownloadFileUrl()
 {
     return "https://github.com/u8sand/Baka-MPlayer/releases/latest";
+}
+
+QString FindYtdl()
+{
+    // GUI apps don't necessarily inherit the user's shell PATH (e.g. apps
+    // launched from Finder on macOS don't see Homebrew), so also look in the
+    // usual install locations, and finally next to our own executable where
+    // the release builds bundle a copy.
+    const QString home = QDir::homePath();
+    const QStringList extraPaths = {
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/opt/local/bin",
+        home + "/.local/bin",
+        home + "/bin"
+    };
+    const QStringList names = {"yt-dlp", "yt-dlp_macos", "youtube-dl"};
+    for(const QString &name : names)
+    {
+        QString path = QStandardPaths::findExecutable(name);
+        if(path.isEmpty())
+            path = QStandardPaths::findExecutable(name, extraPaths);
+        if(!path.isEmpty())
+            return path;
+    }
+    for(const QString &name : names)
+    {
+        QString path = QStandardPaths::findExecutable(name, {QCoreApplication::applicationDirPath()});
+        if(!path.isEmpty())
+            return path;
+    }
+    return QString();
 }
 
 bool IsValidUrl(QString url)

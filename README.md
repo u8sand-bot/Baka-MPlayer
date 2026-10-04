@@ -19,7 +19,7 @@ Its simple design reflects the idea for an uncluttered, simple, and enjoyable en
 * libmpv (mpv >= 0.33, with the OpenGL render API)
 * Qt 6 (>= 6.2): Core, Gui, Widgets, Network, Svg, OpenGL, OpenGLWidgets, LinguistTools
 * libX11 (Linux, optional: enables "always on top" and "dim lights" on X11)
-* yt-dlp (optional, for streaming online videos)
+* yt-dlp (optional, for streaming online videos; the prebuilt Windows and macOS builds bundle a copy, but an installed one takes precedence)
 
 ### Get the font
 

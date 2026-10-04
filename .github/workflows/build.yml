@@ -53,6 +53,10 @@ jobs:
     - name: Package
       run: |
         "$(brew --prefix qt)/bin/macdeployqt" build/Baka-MPlayer.app
+        # bundle yt-dlp for online streams (used when none is installed)
+        curl -fsSL -o build/Baka-MPlayer.app/Contents/MacOS/yt-dlp_macos \
+          https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos
+        chmod +x build/Baka-MPlayer.app/Contents/MacOS/yt-dlp_macos
         # macdeployqt rewrites the bundled libraries, which invalidates their
         # signatures; Apple Silicon refuses to run them ("app is damaged").
         # Re-sign everything ad-hoc (no Apple Developer ID available).
@@ -107,6 +111,8 @@ jobs:
           ldd "$f" | awk '{print $3}' | grep -i '^/ucrt64/' || true
         done | sort -u | xargs -r -I{} cp -n {} dist/
         cp LICENSE dist/
+        # bundle yt-dlp for online streams (used when none is installed)
+        curl -fsSL -o dist/yt-dlp.exe https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe
 
     - uses: actions/upload-artifact@v4
       with:

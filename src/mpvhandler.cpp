@@ -30,7 +30,13 @@ MpvHandler::MpvHandler(QObject *parent):
     mpv_set_option_string(mpv, "vo", "libmpv"); // render through MpvWidget (OpenGL render API)
     mpv_set_option_string(mpv, "input-cursor", "no");   // no mouse handling
     mpv_set_option_string(mpv, "cursor-autohide", "no");// no cursor-autohide, we handle that
-    mpv_set_option_string(mpv, "ytdl", "yes"); // youtube-dl support
+    mpv_set_option_string(mpv, "ytdl", "yes"); // yt-dlp support
+    const QString ytdl = Util::FindYtdl();
+    if(!ytdl.isEmpty()) // tell mpv's ytdl_hook exactly where yt-dlp is
+    {
+        const QByteArray opt = QString("ytdl_hook-ytdl_path=%0").arg(ytdl).toUtf8();
+        mpv_set_option_string(mpv, "script-opts", opt.constData());
+    }
     mpv_set_option_string(mpv, "sub-auto", "fuzzy"); // Automatic subfile detection
     mpv_set_option_string(mpv, "audio-client-name", "baka-mplayer"); // show correct icon in e.g. pavucontrol
 

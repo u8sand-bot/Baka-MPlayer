@@ -25,6 +25,7 @@ QString MonospaceFont();
 // common
 QString VersionFileUrl();
 QString DownloadFileUrl();
+QString FindYtdl(); // path to yt-dlp (or youtube-dl), empty if not found
 bool IsValidUrl(QString url);
 
 QString FormatTime(int time, int totalTime);

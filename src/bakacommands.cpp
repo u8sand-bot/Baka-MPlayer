@@ -365,8 +365,8 @@ void BakaEngine::BakaUpdate(QStringList &args)
 #if defined(Q_OS_WIN)
         QString arg = args.front();
         args.pop_front();
-        if(arg == "youtube-dl")
-            QProcess::startDetached("youtube-dl.exe", {"--update"});
+        if(arg == "youtube-dl" || arg == "yt-dlp")
+            QProcess::startDetached(Util::FindYtdl(), {"--update"});
         else
 #endif
             InvalidParameter(args.join(' '));
