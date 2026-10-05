@@ -25,45 +25,23 @@ redirect_from:
     </table>
 
     <h2 id="windows"><i class="fa fa-windows"></i> Windows</h2>
-    <table style="borders:none;">
-        <tr>
-            <td><a class="button default" href="https://github.com/u8sand/Baka-MPlayer/releases/latest/download/Baka-MPlayer.x86_64.zip">Download for Windows (64-bit)</a></td>
-            <td style="padding-left: 1em;"><a class="button" href="https://db.tt/atVrokcn">Download for Windows (64-bit) Old</a></td>
-        </tr>
-        <tr>
-            <td><a class="button default" href="https://github.com/u8sand/Baka-MPlayer/releases/latest/download/Baka-MPlayer.i686.zip">Download for Windows (32-bit)</a></td>
-            <td style="padding-left: 1em;"><a class="button" href="https://db.tt/mugEmygb">Download for Windows (32-bit) Old</a></td>
-        </tr>
-    </table>
-    <a href="https://www.google.com/get/noto/#sans-lgc" target="_blank">Also get Noto Sans font for best experience</a><br><br>
+    <a class="button default" href="https://github.com/u8sand/Baka-MPlayer/releases/latest/download/Baka-MPlayer-windows-x86_64.zip">Download for Windows (64-bit)</a>
+    <p>Windows 10 or later. Unzip anywhere and run <code>Baka MPlayer.exe</code>; settings are kept next to it, and the player updates itself.</p>
+    <a href="https://fonts.google.com/noto/specimen/Noto+Sans" target="_blank">Also get Noto Sans font for best experience</a><br><br>
+
+    <h2 id="macos"><i class="fa fa-apple"></i> macOS</h2>
+    <a class="button default" href="https://github.com/u8sand/Baka-MPlayer/releases/latest/download/Baka-MPlayer-macos-arm64.dmg">Download for macOS (Apple Silicon)</a>
+    <p>Drag Baka MPlayer to Applications. The app is not notarized, so the first time right-click it and choose <b>Open</b>, or run:</p>
+    <pre><code>$ xattr -dr com.apple.quarantine /Applications/Baka-MPlayer.app</code></pre>
+    <p>For YouTube and other online videos the bundled yt-dlp is used, or your own (e.g. <code>brew install yt-dlp</code>).</p>
 
     <h2 id="linux"><i class="fa fa-linux"></i> Linux</h2>
 
     <h3>Package List</h3>
     <table class="simple-table">
         <tr>
-            <td>Arch (x86_64)</td>
-            <td><a href="https://www.archlinux.org/packages/community/x86_64/baka-mplayer/">https://www.archlinux.org/packages/community/x86_64/baka-mplayer/</a></td>
-        </tr>
-        <tr>
-            <td>Arch (i686)</td>
-            <td><a href="https://www.archlinux.org/packages/community/i686/baka-mplayer/">https://www.archlinux.org/packages/community/i686/baka-mplayer/</a></td>
-        </tr>
-        <tr>
-            <td>Arch (aur, git package)</td>
+            <td>Arch (AUR, git package)</td>
             <td><a href="https://aur.archlinux.org/packages/baka-mplayer-git/">https://aur.archlinux.org/packages/baka-mplayer-git/</a></td>
-        </tr>
-        <tr>
-            <td>Debian (amd64)</td>
-            <td><a href="https://github.com/u8sand/Baka-MPlayer/releases/download/v2.0.4/baka-mplayer_2.0.4-1_amd64.deb">baka-mplayer_2.0.4-1_amd64.deb</a></td>
-        </tr>
-        <tr>
-            <td>Debian (i386)</td>
-            <td><a href="https://github.com/u8sand/Baka-MPlayer/releases/download/v2.0.4/baka-mplayer_2.0.4-1_i386.deb">baka-mplayer_2.0.4-1_i386.deb</a></td>
-        </tr>
-        <tr>
-            <td>Fedora *</td>
-            <td><a href="https://repo.fdzh.org/FZUG">https://repo.fdzh.org/FZUG</td>
         </tr>
         <tr>
             <td>FreeBSD *</td>
@@ -75,35 +53,27 @@ redirect_from:
         </tr>
         <tr>
             <td>openSUSE (Packman team) *</td>
-            <td><a href="https://packman.links2linux.org/package/baka-mplayer">https://packman.links2linux.org/package/baka-mplayer</td>
-        </tr>
-        <tr>
-            <td>Ubuntu *</td>
-            <td><a href="https://launchpad.net/~mc3man/+archive/ubuntu/ffmpeg-test1">https://launchpad.net/~mc3man/+archive/ubuntu/ffmpeg-test1</a></td>
+            <td><a href="https://packman.links2linux.org/package/baka-mplayer">https://packman.links2linux.org/package/baka-mplayer</a></td>
         </tr>
     </table>
     <p style="font-style:italic">* Unofficial ports (may be out of date)</p>
 
     <h3>Compilation</h3>
 
-    <p>Don't see a package for your flavor of linux? That's okay, compiling is easy!</p>
-    <p>First, make sure you have the following dependencies (packages may be named slightly different for each distro):</p>
-    <pre><code>gcc
-pkg-config
-libmpv (<a href="https://github.com/mpv-player/mpv-build#building-libmpv">or compile mpv with libmpv support</a>)
-youtube-dl (optional, for streaming youtube videos)
-qt5-base
-qt5-qmake
-qt5-tools
-qt5-declarative
-qt5-svg
-qt5-network
-qt5-x11extras</code></pre>
+    <p>Don't see a package for your flavor of linux? That's okay, compiling is easy! Both X11 and Wayland are supported.</p>
+    <p>First, install the dependencies. On Debian/Ubuntu (24.04 or newer):</p>
+    <pre><code>$ sudo apt install cmake g++ pkgconf libmpv-dev libx11-dev libgl-dev \
+    qt6-base-dev qt6-svg-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools yt-dlp</code></pre>
+    <p>On Fedora:</p>
+    <pre><code>$ sudo dnf install cmake gcc-c++ pkgconf mpv-libs-devel libX11-devel \
+    qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel yt-dlp</code></pre>
+    <p>On Arch Linux:</p>
+    <pre><code>$ sudo pacman -S cmake mpv qt6-base qt6-svg qt6-tools libx11 yt-dlp</code></pre>
 
     <p>Then run the following commands:</p>
-    <pre><code>$ git clone -b release https://github.com/u8sand/Baka-MPlayer.git
-$ cd "Baka-MPlayer"
-$ ./configure CONFIG+=install_translations
-$ make -j `grep -c ^processor /proc/cpuinfo`
-$ sudo make install</code></pre>
+    <pre><code>$ git clone https://github.com/u8sand/Baka-MPlayer.git
+$ cd Baka-MPlayer
+$ cmake -B build -DCMAKE_BUILD_TYPE=Release
+$ cmake --build build
+$ sudo cmake --install build</code></pre>
 </div>
