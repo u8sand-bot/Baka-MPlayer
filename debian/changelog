@@ -1,3 +1,13 @@
+baka-mplayer (2.1.0-1) unstable; urgency=low
+
+  * New: Qt 6 and CMake build
+  * New: Native Wayland support; video rendered through libmpv's render API
+  * New: Automatic update checks (weekly, can be disabled)
+  * New: yt-dlp support for online streams
+  * Changed: Motion interpolation uses mpv's interpolation option
+
+ -- u8sand <u8sand@gmail.com>  Mon, 05 Oct 2026 12:00:00 +0000
+
 baka-mplayer (2.0.4-1) unstable; urgency=low
 
   * New: Highly requested Hide All Controls mode (under Settings menu)

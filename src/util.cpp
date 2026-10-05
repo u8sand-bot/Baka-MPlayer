@@ -1,16 +1,68 @@
 #include "util.h"
 
 #include <QTime>
-#include <QStringListIterator>
+#include <QRegularExpression>
+#include <QStringList>
 #include <QDir>
+#include <QCoreApplication>
+#include <QStandardPaths>
 
 namespace Util {
 
+QString VersionFileUrl()
+{
+    // BAKA_UPDATE_URL overrides the release feed (for testing the updater)
+    const QString url = qEnvironmentVariable("BAKA_UPDATE_URL");
+    if(!url.isEmpty())
+        return url;
+    return QString("https://api.github.com/repos/%0/releases/latest").arg(BAKA_UPDATE_REPO);
+}
+
+QString DownloadFileUrl()
+{
+    return QString("https://github.com/%0/releases/latest").arg(BAKA_UPDATE_REPO);
+}
+
+QString FindYtdl()
+{
+    // GUI apps don't necessarily inherit the user's shell PATH (e.g. apps
+    // launched from Finder on macOS don't see Homebrew), so also look in the
+    // usual install locations, and finally next to our own executable where
+    // the release builds bundle a copy.
+    const QString home = QDir::homePath();
+    QStringList extraPaths = {
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/opt/local/bin",
+        home + "/.local/bin",
+        home + "/bin"
+    };
+    // pip install --user on macOS
+    const QDir userPython(home + "/Library/Python");
+    for(const QString &version : userPython.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name | QDir::Reversed))
+        extraPaths << userPython.filePath(version + "/bin");
+    const QStringList names = {"yt-dlp", "yt-dlp_macos", "youtube-dl"};
+    for(const QString &name : names)
+    {
+        QString path = QStandardPaths::findExecutable(name);
+        if(path.isEmpty())
+            path = QStandardPaths::findExecutable(name, extraPaths);
+        if(!path.isEmpty())
+            return path;
+    }
+    for(const QString &name : names)
+    {
+        QString path = QStandardPaths::findExecutable(name, {QCoreApplication::applicationDirPath()});
+        if(!path.isEmpty())
+            return path;
+    }
+    return QString();
+}
 
 bool IsValidUrl(QString url)
 {
-    QRegExp rx("^[a-z]{2,}://", Qt::CaseInsensitive); // url
-    return (rx.indexIn(url) != -1);
+    static const QRegularExpression rx("^[a-z]{2,}://", QRegularExpression::CaseInsensitiveOption); // url
+    return rx.match(url).hasMatch();
 }
 
 QString FormatTime(int _time, int _totalTime)

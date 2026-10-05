@@ -2,15 +2,16 @@ Source: baka-mplayer
 Section: video
 Priority: optional
 Maintainer: Joshua Park (godly-devotion) <azian.otaku@live.com>
-Build-Depends: debhelper (>=9), pkg-config, libice-dev, libmpv-dev,
-        qtbase5-dev (>= 5.2.0), qtbase5-dev-tools, qt5-qmake, qttools5-dev-tools,
-        qtdeclarative5-dev, libqt5svg5-dev, libqt5x11extras5-dev, libqt5network5
-Standards-Version: 3.9.5
-Homepage: http://bakamplayer.u8sand.net/
+Build-Depends: debhelper-compat (= 13), cmake (>= 3.16), pkgconf, libmpv-dev,
+        libx11-dev, qt6-base-dev (>= 6.2), qt6-svg-dev, qt6-tools-dev,
+        qt6-tools-dev-tools, qt6-l10n-tools, libgl-dev
+Standards-Version: 4.6.2
+Homepage: https://github.com/u8sand/Baka-MPlayer
+Rules-Requires-Root: no
 
 Package: baka-mplayer
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Recommends: fonts-noto, youtube-dl
+Depends: ${shlibs:Depends}, ${misc:Depends}, qt6-svg-plugins | libqt6svg6
+Recommends: fonts-noto, yt-dlp
 Description: Baka MPlayer - The mpv based media player
- Free and open source, cross-platform, libmpv based multimedia player. Qt 5.
+ Free and open source, cross-platform, libmpv based multimedia player. Qt 6.

@@ -4,7 +4,6 @@
 #include <QtMath>
 #include <QLibraryInfo>
 #include <QMimeData>
-#include <QDesktopWidget>
 
 #include "bakaengine.h"
 #include "mpvhandler.h"
@@ -123,7 +122,7 @@ MainWindow::MainWindow(QWidget *parent):
                     // load the system translations provided by Qt
                     tmp = baka->qtTranslator;
                     baka->qtTranslator = new QTranslator();
-                    baka->qtTranslator->load(QString("qt_%0").arg(lang), QLibraryInfo::location(QLibraryInfo::TranslationsPath));
+                    (void)baka->qtTranslator->load(QString("qt_%0").arg(lang), QLibraryInfo::path(QLibraryInfo::TranslationsPath));
                     qApp->installTranslator(baka->qtTranslator);
                     if(tmp != nullptr)
                         delete tmp;
@@ -131,7 +130,7 @@ MainWindow::MainWindow(QWidget *parent):
                     // load the application translations
                     tmp = baka->translator;
                     baka->translator = new QTranslator();
-                    baka->translator->load(QString("baka-mplayer_%0").arg(lang), BAKA_MPLAYER_LANG_PATH);
+                    (void)baka->translator->load(QString("baka-mplayer_%0").arg(lang), BAKA_MPLAYER_LANG_PATH);
                     qApp->installTranslator(baka->translator);
                     if(tmp != nullptr)
                         delete tmp;
@@ -181,9 +180,7 @@ MainWindow::MainWindow(QWidget *parent):
             {
                 ui->actionShow_D_ebug_Output->setChecked(b);
                 ui->verticalWidget->setVisible(b);
-                mouseMoveEvent(new QMouseEvent(QMouseEvent::MouseMove,
-                                               QCursor::pos(),
-                                               Qt::NoButton,Qt::NoButton,Qt::NoModifier));
+                SendMouseMove();
                 if(b)
                     ui->inputLineEdit->setFocus();
             });
@@ -238,15 +235,16 @@ MainWindow::MainWindow(QWidget *parent):
             });
 
     // dimDialog
-    connect(baka->dimDialog, &DimDialog::visbilityChanged,
-            [=](bool dim)
-            {
-                ui->action_Dim_Lights->setChecked(dim);
-                if(dim)
-                    Util::SetAlwaysOnTop(winId(), true);
-                else if(onTop == "never" || (onTop == "playing" && mpv->getPlayState() > 0))
-                    Util::SetAlwaysOnTop(winId(), false);
-            });
+    if(baka->dimDialog != nullptr)
+        connect(baka->dimDialog, &DimDialog::visbilityChanged,
+                [=](bool dim)
+                {
+                    ui->action_Dim_Lights->setChecked(dim);
+                    if(dim)
+                        Util::SetAlwaysOnTop(winId(), true);
+                    else if(onTop == "never" || (onTop == "playing" && mpv->getPlayState() > 0))
+                        Util::SetAlwaysOnTop(winId(), false);
+                });
 
     // mpv
 
@@ -388,8 +386,7 @@ MainWindow::MainWindow(QWidget *parent):
                     if(video)
                     {
                         // if we were hiding album art, show it--we've gone to a video
-                        if(ui->mpvFrame->styleSheet() != QString()) // remove filler album art
-                            ui->mpvFrame->setStyleSheet("");
+                        ui->mpvFrame->setAlbumArt(false); // remove filler album art
                         if(ui->action_Hide_Album_Art->isChecked())
                             HideAlbumArt(false);
                         ui->action_Hide_Album_Art->setEnabled(false);
@@ -419,8 +416,7 @@ MainWindow::MainWindow(QWidget *parent):
                         if(!albumArt)
                         {
                             // put in filler albumArt
-                            if(ui->mpvFrame->styleSheet() == QString())
-                                ui->mpvFrame->setStyleSheet("background-image:url(:/img/album-art.png);background-repeat:no-repeat;background-position:center;");
+                            ui->mpvFrame->setAlbumArt(true);
                         }
                         ui->action_Hide_Album_Art->setEnabled(true);
                         ui->menuSubtitle_Track->setEnabled(false);
@@ -507,9 +503,6 @@ MainWindow::MainWindow(QWidget *parent):
                     {
                         ui->action_Play->setEnabled(true);
                         ui->playButton->setEnabled(true);
-#if defined(Q_OS_WIN)
-                        playpause_toolbutton->setEnabled(true);
-#endif
                         ui->playlistButton->setEnabled(true);
                         ui->action_Show_Playlist->setEnabled(true);
                         ui->menuAudio_Tracks->setEnabled(true);
@@ -518,6 +511,7 @@ MainWindow::MainWindow(QWidget *parent):
                     SetPlaybackControls(true);
                     mpv->Play();
                     baka->overlay->showStatusText(QString(), 0);
+                    [[fallthrough]];
                 case Mpv::Playing:
                     SetPlayButtonIcon(false);
                     if(onTop == "playing")
@@ -551,8 +545,7 @@ MainWindow::MainWindow(QWidget *parent):
                                 SetPlaybackControls(false);
                                 ui->seekBar->setTracking(0);
                                 ui->actionStop_after_Current->setChecked(false);
-                                if(ui->mpvFrame->styleSheet() != QString()) // remove filler album art
-                                    ui->mpvFrame->setStyleSheet("");
+                                ui->mpvFrame->setAlbumArt(false); // remove filler album art
                             }
                         }
                         else
@@ -676,10 +669,10 @@ MainWindow::MainWindow(QWidget *parent):
                 mpv->ShowText(b ? tr("Muted") : tr("Unmuted"));
             });
 
-    connect(mpv, &MpvHandler::voChanged,
-            [=](QString vo)
+    connect(mpv, &MpvHandler::interpolationChanged,
+            [=](bool b)
             {
-                ui->action_Motion_Interpolation->setChecked(vo.contains("interpolation"));
+                ui->action_Motion_Interpolation->setChecked(b);
             });
     // ui
 
@@ -848,12 +841,7 @@ MainWindow::~MainWindow()
     // see: http://qt-project.org/doc/qt-4.8/objecttrees.html
 
     // but apparently they don't (https://github.com/u8sand/Baka-MPlayer/issues/47)
-#if defined(Q_OS_WIN)
-    delete prev_toolbutton;
-    delete playpause_toolbutton;
-    delete next_toolbutton;
-    delete thumbnail_toolbar;
-#endif
+    ui->mpvFrame->Detach(); // the render context must be freed before mpv is destroyed
     delete baka;
     delete ui;
 }
@@ -863,47 +851,10 @@ void MainWindow::Load(QString file)
     // load the settings here--the constructor has already been called
     // this solves some issues with setting things before the constructor has ended
     menuVisible = ui->menubar->isVisible(); // does the OS use a menubar? (appmenu doesn't)
-#if defined(Q_OS_WIN)
-    // add windows 7+ thubnail toolbar buttons
-    thumbnail_toolbar = new QWinThumbnailToolBar(this);
-    thumbnail_toolbar->setWindow(this->windowHandle());
-
-    prev_toolbutton = new QWinThumbnailToolButton(thumbnail_toolbar);
-    prev_toolbutton->setEnabled(false);
-    prev_toolbutton->setToolTip(tr("Previous"));
-    prev_toolbutton->setIcon(QIcon(":/img/tool-previous.ico"));
-    connect(prev_toolbutton, &QWinThumbnailToolButton::clicked,
-            [=]
-            {
-                ui->playlistWidget->PlayIndex(-1, true);
-            });
-
-    playpause_toolbutton = new QWinThumbnailToolButton(thumbnail_toolbar);
-    playpause_toolbutton->setEnabled(false);
-    playpause_toolbutton->setToolTip(tr("Play"));
-    playpause_toolbutton->setIcon(QIcon(":/img/tool-play.ico"));
-    connect(playpause_toolbutton, &QWinThumbnailToolButton::clicked,
-            [=]
-            {
-                baka->PlayPause();
-            });
-
-    next_toolbutton = new QWinThumbnailToolButton(thumbnail_toolbar);
-    next_toolbutton->setEnabled(false);
-    next_toolbutton->setToolTip(tr("Next"));
-    next_toolbutton->setIcon(QIcon(":/img/tool-next.ico"));
-    connect(next_toolbutton, &QWinThumbnailToolButton::clicked,
-            [=]
-            {
-                ui->playlistWidget->PlayIndex(1, true);
-            });
-
-    thumbnail_toolbar->addButton(prev_toolbutton);
-    thumbnail_toolbar->addButton(playpause_toolbutton);
-    thumbnail_toolbar->addButton(next_toolbutton);
-#endif
     baka->LoadSettings();
+    ui->mpvFrame->Configure(mpv->mpvHandle()); // video output options must precede initialization
     mpv->Initialize();
+    ui->mpvFrame->Attach(mpv->mpvHandle());
     mpv->LoadFile(file);
 }
 
@@ -955,12 +906,12 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
         if(gestures)
         {
             if(ui->mpvFrame->geometry().contains(event->pos())) // mouse is in the mpvFrame
-                baka->gesture->Begin(GestureHandler::HSEEK_VVOLUME, event->globalPos(), pos());
+                baka->gesture->Begin(GestureHandler::HSEEK_VVOLUME, event->globalPosition().toPoint(), pos());
             else if(!isFullScreen()) // not fullscreen
-                baka->gesture->Begin(GestureHandler::MOVE, event->globalPos(), pos());
+                baka->gesture->Begin(GestureHandler::MOVE, event->globalPosition().toPoint(), pos());
         }
         else if(!isFullScreen()) // not fullscreen
-            baka->gesture->Begin(GestureHandler::MOVE, event->globalPos(), pos());
+            baka->gesture->Begin(GestureHandler::MOVE, event->globalPosition().toPoint(), pos());
 
         if(ui->remainingLabel->rect().contains(ui->remainingLabel->mapFrom(this, event->pos()))) // clicked timeLayoutWidget
             setRemaining(!remaining); // todo: use a bakacommand
@@ -987,7 +938,7 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *event)
 
 void MainWindow::mouseMoveEvent(QMouseEvent *event)
 {
-    if(baka->gesture->Process(event->globalPos()))
+    if(baka->gesture->Process(event->globalPosition().toPoint()))
         event->accept();
     else if(isFullScreenMode())
     {
@@ -996,13 +947,13 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
 
         QRect playbackRect = geometry();
         playbackRect.setTop(playbackRect.bottom() - 60);
-        bool showPlayback = playbackRect.contains(event->globalPos());
+        bool showPlayback = playbackRect.contains(event->globalPosition().toPoint());
         ui->playbackLayoutWidget->setVisible(showPlayback || ui->outputTextEdit->isVisible());
         ui->seekBar->setVisible(showPlayback || ui->outputTextEdit->isVisible());
 
         QRect playlistRect = geometry();
         playlistRect.setLeft(playlistRect.right() - qCeil(playlistRect.width()/7.0));
-        bool showPlaylist = playlistRect.contains(event->globalPos());
+        bool showPlaylist = playlistRect.contains(event->globalPosition().toPoint());
         ShowPlaylist(showPlaylist);
 
         if(!(showPlayback || showPlaylist) && autohide)
@@ -1011,11 +962,27 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
     QMainWindow::mouseMoveEvent(event);
 }
 
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    // Qt destroys the native window while closing, so mpv (whose video window
+    // may be embedded in it) has to be shut down first
+    ui->mpvFrame->Detach();
+    mpv->Shutdown();
+    QMainWindow::closeEvent(event);
+}
+
+void MainWindow::SendMouseMove()
+{
+    // synthesize a mouse move at the current cursor position
+    QMouseEvent event(QEvent::MouseMove,
+                      mapFromGlobal(QCursor::pos()), QCursor::pos(),
+                      Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+    mouseMoveEvent(&event);
+}
+
 void MainWindow::leaveEvent(QEvent *event)
 {
-    mouseMoveEvent(new QMouseEvent(QMouseEvent::MouseMove,
-                                   QCursor::pos(),
-                                   Qt::NoButton,Qt::NoButton,Qt::NoModifier));
+    SendMouseMove();
     QMainWindow::leaveEvent(event);
 }
 
@@ -1036,9 +1003,10 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 
 void MainWindow::wheelEvent(QWheelEvent *event)
 {
-    if(event->delta() > 0)
+    const int delta = event->angleDelta().y();
+    if(delta > 0)
         mpv->Volume(mpv->getVolume()+5, true);
-    else
+    else if(delta < 0)
         mpv->Volume(mpv->getVolume()-5, true);
     QMainWindow::wheelEvent(event);
 }
@@ -1163,9 +1131,7 @@ void MainWindow::HideAllControls(bool w, bool s)
             playlistState = ui->playlistLayoutWidget->isVisible();
         ui->menubar->setVisible(false);
         setContextMenuPolicy(Qt::ActionsContextMenu);
-        mouseMoveEvent(new QMouseEvent(QMouseEvent::MouseMove,
-                                       QCursor::pos(),
-                                       Qt::NoButton,Qt::NoButton,Qt::NoModifier));
+        SendMouseMove();
     }
     else
     {
@@ -1262,18 +1228,12 @@ void MainWindow::SetNextButtonEnabled(bool enable)
 {
     ui->nextButton->setEnabled(enable);
     ui->actionPlay_Next_File->setEnabled(enable);
-#if defined(Q_OS_WIN)
-    next_toolbutton->setEnabled(enable);
-#endif
 }
 
 void MainWindow::SetPreviousButtonEnabled(bool enable)
 {
     ui->previousButton->setEnabled(enable);
     ui->actionPlay_Previous_File->setEnabled(enable);
-#if defined(Q_OS_WIN)
-    prev_toolbutton->setEnabled(enable);
-#endif
 }
 
 void MainWindow::SetPlayButtonIcon(bool play)
@@ -1282,19 +1242,11 @@ void MainWindow::SetPlayButtonIcon(bool play)
     {
         ui->playButton->setIcon(QIcon(":/img/default_play.svg"));
         ui->action_Play->setText(tr("&Play"));
-#if defined(Q_OS_WIN)
-        playpause_toolbutton->setToolTip(tr("Play"));
-        playpause_toolbutton->setIcon(QIcon(":/img/tool-play.ico"));
-#endif
     }
     else // pause icon
     {
         ui->playButton->setIcon(QIcon(":/img/default_pause.svg"));
         ui->action_Play->setText(tr("&Pause"));
-#if defined(Q_OS_WIN)
-        playpause_toolbutton->setToolTip(tr("Pause"));
-        playpause_toolbutton->setIcon(QIcon(":/img/tool-pause.ico"));
-#endif
     }
 }
 

@@ -1,8 +1,8 @@
-build*
-*.pro.*
-Makefile
-*.kdev4
+build*/
 *.qm
-*.out
+*.kdev4
 .tags*
-.qmake.stash
+CMakeLists.txt.user*
+.qtcreator/
+.vscode/
+.idea/

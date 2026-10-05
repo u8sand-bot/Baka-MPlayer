@@ -18,6 +18,11 @@ struct Recent
         return (path == recent.path);
     }
 
+    bool operator==(const QString &p) const
+    {
+        return (path == p);
+    }
+
     QString path,
             title;
     int     time;

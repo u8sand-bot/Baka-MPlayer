@@ -17,7 +17,7 @@ static void wakeup(void *ctx)
     QCoreApplication::postEvent(mpvhandler, new QEvent(QEvent::User));
 }
 
-MpvHandler::MpvHandler(int64_t wid, QObject *parent):
+MpvHandler::MpvHandler(QObject *parent):
     QObject(parent),
     baka(static_cast<BakaEngine*>(parent))
 {
@@ -27,10 +27,15 @@ MpvHandler::MpvHandler(int64_t wid, QObject *parent):
         throw "Could not create mpv object";
 
     // set mpv options
-    mpv_set_option(mpv, "wid", MPV_FORMAT_INT64, &wid);
     mpv_set_option_string(mpv, "input-cursor", "no");   // no mouse handling
     mpv_set_option_string(mpv, "cursor-autohide", "no");// no cursor-autohide, we handle that
-    mpv_set_option_string(mpv, "ytdl", "yes"); // youtube-dl support
+    mpv_set_option_string(mpv, "ytdl", "yes"); // yt-dlp support
+    const QString ytdl = Util::FindYtdl();
+    if(!ytdl.isEmpty()) // tell mpv's ytdl_hook exactly where yt-dlp is
+    {
+        const QByteArray opt = QString("ytdl_hook-ytdl_path=%0").arg(ytdl).toUtf8();
+        mpv_set_option_string(mpv, "script-opts", opt.constData());
+    }
     mpv_set_option_string(mpv, "sub-auto", "fuzzy"); // Automatic subfile detection
     mpv_set_option_string(mpv, "audio-client-name", "baka-mplayer"); // show correct icon in e.g. pavucontrol
 
@@ -52,10 +57,15 @@ MpvHandler::MpvHandler(int64_t wid, QObject *parent):
 
 MpvHandler::~MpvHandler()
 {
+    Shutdown();
+}
+
+void MpvHandler::Shutdown()
+{
     if(mpv)
     {
         mpv_terminate_destroy(mpv);
-        mpv = NULL;
+        mpv = nullptr;
     }
 }
 
@@ -95,7 +105,7 @@ QString MpvHandler::getMediaInfo()
     QString out = outer.arg(tr("File"), fi.fileName()) +
             inner.arg(tr("Title"), fileInfo.media_title) +
             inner.arg(tr("File size"), Util::HumanSize(fi.size())) +
-            inner.arg(tr("Date created"), fi.created().toString()) +
+            inner.arg(tr("Date created"), fi.birthTime().toString()) +
             inner.arg(tr("Media length"), Util::FormatTime(fileInfo.length, fileInfo.length)) + '\n';
     if(fileInfo.video_params.codec != QString())
         out += outer.arg(tr("Video (x%0)").arg(QString::number(vtracks)), fileInfo.video_params.codec) +
@@ -167,12 +177,12 @@ bool MpvHandler::event(QEvent *event)
                 else if(QString(prop->name) == "sid")
                 {
                     if(prop->format == MPV_FORMAT_INT64)
-                        setSid(*(int*)prop->data);
+                        setSid((int)*(int64_t*)prop->data);
                 }
                 else if(QString(prop->name) == "aid")
                 {
                     if(prop->format == MPV_FORMAT_INT64)
-                        setAid(*(int*)prop->data);
+                        setAid((int)*(int64_t*)prop->data);
                 }
                 else if(QString(prop->name) == "sub-visibility")
                 {
@@ -650,26 +660,12 @@ void MpvHandler::Deinterlace(bool deinterlace)
 
 void MpvHandler::Interpolate(bool interpolate)
 {
-    if(vo == QString())
-        vo = mpv_get_property_string(mpv, "current-vo");
-    QStringList vos = vo.split(',');
-    for(auto &o : vos)
-    {
-        int i = o.indexOf(":interpolation");
-        if(interpolate && i == -1)
-            o.append(":interpolation");
-        else if(i != -1)
-            o.remove(i, QString(":interpolation").length());
-    }
-    setVo(vos.join(','));
-    SetOption("vo", vo);
+    // interpolation requires display-synced video timing
+    if(interpolate)
+        HandleErrorCode(mpv_set_property_string(mpv, "video-sync", "display-resample"));
+    HandleErrorCode(mpv_set_property_string(mpv, "interpolation", interpolate ? "yes" : "no"));
+    setInterpolation(interpolate);
     ShowText(tr("Motion Interpolation: %0").arg(interpolate ? tr("enabled") : tr("disabled")));
-}
-
-void MpvHandler::Vo(QString o)
-{
-    setVo(o);
-    SetOption("vo", vo);
 }
 
 void MpvHandler::MsgLevel(QString level)

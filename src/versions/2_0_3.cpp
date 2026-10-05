@@ -13,10 +13,8 @@
 #include <QJsonValueRef>
 #include <QDir>
 
-#if defined(Q_OS_WIN)
 #include <QDate>
 #include "updatemanager.h"
-#endif
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 4, 2)
 class QJsonValueRef2
@@ -75,14 +73,14 @@ void BakaEngine::Load2_0_3()
     window->setResume(QJsonValueRef2(root["resume"]).toBool(true));
     window->setHideAllControls(QJsonValueRef2(root["hideAllControls"]).toBool(false));
     window->setLang(QJsonValueRef2(root["lang"]).toString("auto"));
-#if defined(Q_OS_WIN)
-    QDate last = QDate::fromString(root["lastcheck"].toString()); // convert to date
-    if(last.daysTo(QDate::currentDate()) > 7) // been a week since we last checked?
+    autoUpdate = QJsonValueRef2(root["autoUpdate"]).toBool(true);
+    lastUpdateCheck = QDate::fromString(root["lastcheck"].toString(), Qt::ISODate);
+    if(autoUpdate && (!lastUpdateCheck.isValid() || lastUpdateCheck.daysTo(QDate::currentDate()) >= 7))
     {
+        autoUpdatePending = true;
         update->CheckForUpdates();
-        root["lastcheck"] = QDate::currentDate().toString();
+        lastUpdateCheck = QDate::currentDate();
     }
-#endif
     window->UpdateRecentFiles();
 
     // apply default shortcut mappings
@@ -106,8 +104,16 @@ void BakaEngine::Load2_0_3()
     mpv_json.remove("volume");
     mpv->Speed(QJsonValueRef2(mpv_json["speed"]).toDouble(1.0));
     mpv_json.remove("speed");
-    mpv->Vo(mpv_json["vo"].toString());
+    // legacy "vo" settings (e.g. "opengl-hq:interpolation") are no longer
+    // applicable: video is always rendered through MpvWidget (vo=libmpv)
+    if(mpv_json["vo"].toString().contains("interpolation"))
+    {
+        mpv_json["interpolation"] = "yes";
+        mpv_json["video-sync"] = "display-resample";
+    }
     mpv_json.remove("vo");
+    if(mpv_json["interpolation"].toString() == "yes")
+        mpv->setInterpolation(true);
     mpv->ScreenshotTemplate(QJsonValueRef2(mpv_json["screenshot-template"]).toString("screenshot%#04n"));
     mpv_json.remove("screenshot-template");
     mpv->ScreenshotDirectory(QJsonValueRef2(mpv_json["screenshot-directory"]).toString("."));
@@ -141,6 +147,9 @@ void BakaEngine::SaveSettings()
     root["leftClickPlayPause"] = window->leftClickPlayPause;
     root["resume"] = window->resume;
     root["hideAllControls"] = window->hideAllControls;
+    root["autoUpdate"] = autoUpdate;
+    if(lastUpdateCheck.isValid())
+        root["lastcheck"] = lastUpdateCheck.toString(Qt::ISODate);
     root["version"] = version;
 
     QJsonArray recent_json;
@@ -181,7 +190,17 @@ void BakaEngine::SaveSettings()
     QJsonObject mpv_json = root["mpv"].toObject();
     mpv_json["volume"] = mpv->volume;
     mpv_json["speed"] = mpv->speed;
-    mpv_json["vo"] = mpv->vo;
+    mpv_json.remove("vo");
+    if(mpv->interpolation)
+    {
+        mpv_json["interpolation"] = "yes";
+        mpv_json["video-sync"] = "display-resample";
+    }
+    else
+    {
+        mpv_json.remove("interpolation");
+        mpv_json.remove("video-sync");
+    }
     mpv_json["screenshot-format"] = mpv->screenshotFormat;
     mpv_json["screenshot-template"] = mpv->screenshotTemplate;
     mpv_json["screenshot-directory"] = QDir::fromNativeSeparators(mpv->screenshotDir);

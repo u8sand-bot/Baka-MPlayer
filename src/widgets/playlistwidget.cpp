@@ -5,10 +5,13 @@
 
 #include <QListWidgetItem>
 #include <QMenu>
+#include <QFile>
 #include <QFont>
 #include <QMessageBox>
 
-#include <algorithm> // for std::random_shuffle and std::sort
+#include <QRandomGenerator>
+
+#include <algorithm> // for std::shuffle and std::sort
 
 PlaylistWidget::PlaylistWidget(QWidget *parent) :
     QListWidget(parent),
@@ -242,7 +245,7 @@ void PlaylistWidget::Shuffle()
     for(int i = 0; i < count(); ++i)
         newPlaylist.append(this->item(i)->text());
 
-    std::random_shuffle(newPlaylist.begin(), newPlaylist.end());
+    std::shuffle(newPlaylist.begin(), newPlaylist.end(), *QRandomGenerator::global());
     // make current playing item the first
     auto iter = std::find(newPlaylist.begin(), newPlaylist.end(), file);
     std::swap(*iter, *newPlaylist.begin());

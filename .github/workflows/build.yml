@@ -1,0 +1,273 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - '**'
+    tags:
+    - 'v*'
+    paths-ignore:
+    - 'website/**'
+  pull_request:
+    paths-ignore:
+    - 'website/**'
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          cmake ninja-build g++ pkgconf libmpv-dev libx11-dev libgl-dev \
+          qt6-base-dev qt6-svg-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools
+
+    - name: Build
+      run: |
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBAKA_UPDATE_REPO="${{ github.repository }}"
+        cmake --build build
+
+    - name: Install
+      run: DESTDIR="$PWD/dist" cmake --install build
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: baka-mplayer-linux-x86_64
+        path: dist
+
+  macos:
+    runs-on: macos-14
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install dependencies
+      run: brew install qt mpv pkgconf ninja
+
+    - name: Build
+      run: |
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$(brew --prefix qt)" -DBAKA_UPDATE_REPO="${{ github.repository }}"
+        cmake --build build
+
+    - name: Package
+      run: |
+        "$(brew --prefix qt)/bin/macdeployqt" build/Baka-MPlayer.app
+        # bundle yt-dlp for online streams (used when none is installed)
+        curl -fsSL -o build/Baka-MPlayer.app/Contents/MacOS/yt-dlp_macos \
+          https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos
+        chmod +x build/Baka-MPlayer.app/Contents/MacOS/yt-dlp_macos
+        # macdeployqt rewrites the bundled libraries, which invalidates their
+        # signatures; Apple Silicon refuses to run them ("app is damaged").
+        # Re-sign everything ad-hoc (no Apple Developer ID available).
+        codesign --force --deep --sign - build/Baka-MPlayer.app
+        codesign --verify --deep --strict --verbose=2 build/Baka-MPlayer.app
+        mkdir dmg
+        cp -R build/Baka-MPlayer.app dmg/
+        ln -s /Applications dmg/Applications
+        hdiutil create -volname "Baka MPlayer" -srcfolder dmg -format UDZO Baka-MPlayer-macos-arm64.dmg
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: baka-mplayer-macos-arm64
+        path: Baka-MPlayer-macos-arm64.dmg
+
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+    - uses: actions/checkout@v7
+
+    # Qt is linked statically and libmpv comes from shinchiro's mpv-winbuild,
+    # a single self-contained DLL, so the package is just a handful of files.
+    - uses: msys2/setup-msys2@v2
+      with:
+        msystem: UCRT64
+        update: true
+        install: >-
+          mingw-w64-ucrt-x86_64-toolchain
+          mingw-w64-ucrt-x86_64-cmake
+          mingw-w64-ucrt-x86_64-ninja
+          mingw-w64-ucrt-x86_64-pkgconf
+          mingw-w64-ucrt-x86_64-qt6-static
+          mingw-w64-ucrt-x86_64-brotli
+          mingw-w64-ucrt-x86_64-bzip2
+          mingw-w64-ucrt-x86_64-double-conversion
+          mingw-w64-ucrt-x86_64-freetype
+          mingw-w64-ucrt-x86_64-graphite2
+          mingw-w64-ucrt-x86_64-harfbuzz
+          mingw-w64-ucrt-x86_64-libb2
+          mingw-w64-ucrt-x86_64-libjpeg-turbo
+          mingw-w64-ucrt-x86_64-libpng
+          mingw-w64-ucrt-x86_64-md4c
+          mingw-w64-ucrt-x86_64-pcre2
+          mingw-w64-ucrt-x86_64-zlib
+          mingw-w64-ucrt-x86_64-zstd
+          mingw-w64-ucrt-x86_64-libwebp
+          mingw-w64-ucrt-x86_64-libtiff
+          mingw-w64-ucrt-x86_64-libdeflate
+          mingw-w64-ucrt-x86_64-jbigkit
+          mingw-w64-ucrt-x86_64-lerc
+          mingw-w64-ucrt-x86_64-xz
+          mingw-w64-ucrt-x86_64-openssl
+          mingw-w64-ucrt-x86_64-vulkan-headers
+          mingw-w64-ucrt-x86_64-vulkan-loader
+          p7zip
+
+    - name: Show static Qt dependencies
+      run: |
+        pacman -Si mingw-w64-ucrt-x86_64-qt6-static | grep -E '^(Version|Depends On)'
+        echo "Third-party packages the Qt modules look for:"
+        for m in Core Gui Widgets Network Svg OpenGL OpenGLWidgets; do
+          cat /ucrt64/qt6-static/lib/cmake/Qt6$m/Qt6${m}Dependencies.cmake 2>/dev/null
+        done | grep -oE "Wrap[A-Za-z0-9]+" | sort -u || true
+
+    - name: Download libmpv
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        release=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
+          https://api.github.com/repos/shinchiro/mpv-winbuild-cmake/releases/latest)
+        url=$(echo "$release" | grep -oE 'https://[^"]*/mpv-dev-x86_64-[0-9]{8}-git-[0-9a-f]+\.7z' | head -n1)
+        if [ -z "$url" ]; then
+          echo "Could not find an mpv-dev-x86_64 asset; available assets:"
+          echo "$release" | grep -oE '"name": *"[^"]*"'
+          exit 1
+        fi
+        echo "Using $url"
+        curl -fsSL -o mpv-dev.7z "$url"
+        7z x -ompv-dev mpv-dev.7z > /dev/null
+        ls mpv-dev
+
+    - name: Build
+      run: |
+        # static archives don't record their own dependencies; append the
+        # transitive libraries of Qt's third-party deps to the link line
+        # (this variable replaces CMake's default system libraries, so keep them)
+        extra="-lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32"
+        for m in freetype2 harfbuzz libpng libtiff-4 libwebp libwebpdemux libwebpmux \
+                 libjpeg openssl libbrotlidec libb2 libpcre2-16 libzstd zlib; do
+          if pkg-config --exists $m; then
+            extra="$extra $(pkg-config --static --libs-only-l $m)"
+          else
+            echo "pkg-config: $m not found"
+          fi
+        done
+        extra=$(echo $extra | tr ' ' '\n' | awk '!seen[$0]++' | tr '\n' ' ')
+        echo "Extra libraries: $extra"
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+          -DBAKA_UPDATE_REPO="${{ github.repository }}" \
+          -DBAKA_STATIC_DEPS=ON \
+          -DCMAKE_CXX_STANDARD_LIBRARIES="$extra" \
+          -DCMAKE_PREFIX_PATH=/ucrt64/qt6-static \
+          -DMPV_INCLUDE_DIR="$PWD/mpv-dev/include" \
+          -DMPV_LIBRARY="$PWD/mpv-dev/libmpv.dll.a" \
+          -DCMAKE_EXE_LINKER_FLAGS="-static"
+        cmake --build build
+
+    - name: Package
+      run: |
+        mkdir -p dist
+        cp "build/Baka MPlayer.exe" mpv-dev/libmpv-2.dll LICENSE dist/
+        # libmpv loads the Vulkan loader, which only exists on machines whose
+        # GPU driver installed it; ship the Khronos loader (mpv falls back to
+        # D3D11/OpenGL when no Vulkan driver is present)
+        cp /ucrt64/bin/vulkan-1.dll dist/
+        # bundle yt-dlp for online streams (used when none is installed)
+        curl -fsSL -o dist/yt-dlp.exe https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe
+        ls -la dist
+
+    - name: Check DLL dependencies
+      run: |
+        # Fail if anything depends on a DLL we don't ship and that isn't part
+        # of Windows. (The build machine has extra DLLs such as vulkan-1.dll
+        # installed system-wide, so "it runs on CI" proves nothing.)
+        shipped=$(ls dist | tr 'A-Z' 'a-z')
+        bad=0
+        for f in dist/*.exe dist/*.dll; do
+          [ "$(basename "$f")" = yt-dlp.exe ] && continue
+          echo "== $f"
+          for dll in $(objdump -p "$f" | awk '/DLL Name:/ {print tolower($3)}'); do
+            echo "   $dll"
+            if echo "$shipped" | grep -qx "$dll"; then continue; fi
+            case "$dll" in
+              api-ms-win-*|ext-ms-*) continue ;;
+            esac
+            if [ -f "/c/Windows/System32/$dll" ] && [ "$dll" != "vulkan-1.dll" ] && [ ! -f "/ucrt64/bin/$dll" ]; then
+              continue
+            fi
+            echo "   ^ not shipped and not a Windows system DLL"
+            bad=1
+          done
+        done
+        exit $bad
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: baka-mplayer-windows-x86_64
+        path: dist
+
+  release:
+    # pushing a v* tag publishes the builds as a GitHub release; the file names
+    # are fixed so that releases/latest/download/<name> links and the in-app
+    # updater always find them
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, macos, windows]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Check version
+      run: |
+        version=$(sed -n 's/^ *VERSION \([0-9.]*\)$/\1/p' CMakeLists.txt | head -n1)
+        if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+          echo "Tag $GITHUB_REF_NAME does not match the version in CMakeLists.txt ($version)"
+          exit 1
+        fi
+
+    - uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Package
+      run: |
+        (cd artifacts/baka-mplayer-windows-x86_64 && zip -r ../../Baka-MPlayer-windows-x86_64.zip .)
+        cp artifacts/baka-mplayer-macos-arm64/Baka-MPlayer-macos-arm64.dmg .
+        # release notes: this version's section of CHANGELOG.md
+        awk -v v="${GITHUB_REF_NAME#v}" '/^## /{p = ($2 == v); next} p' CHANGELOG.md > notes.md
+        test -s notes.md || echo "Baka MPlayer ${GITHUB_REF_NAME#v}" > notes.md
+        cat notes.md
+
+    - name: Legacy update files
+      run: |
+        # Baka MPlayer 2.0.x checks http://bakamplayer.u8sand.net/version_<os>
+        # ("key=value" lines) and downloads Baka.MPlayer.64-bit.zip from there.
+        # These files are meant to be uploaded to that site.
+        mkdir legacy-update
+        version="${GITHUB_REF_NAME#v}"
+        for os in windows linux osx; do
+          printf 'version=%s\nbugfixes=Baka MPlayer %s is available. See https://github.com/%s/releases for what is new.\n' \
+            "$version" "$version" "$GITHUB_REPOSITORY" > legacy-update/version_$os
+        done
+        cp Baka-MPlayer-windows-x86_64.zip legacy-update/Baka.MPlayer.64-bit.zip
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: legacy-update-files
+        path: legacy-update
+
+    - name: Create release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release create "$GITHUB_REF_NAME" \
+          --title "Baka MPlayer ${GITHUB_REF_NAME#v}" \
+          --notes-file notes.md \
+          Baka-MPlayer-windows-x86_64.zip \
+          Baka-MPlayer-macos-arm64.dmg

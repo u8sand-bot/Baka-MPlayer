@@ -6,7 +6,7 @@
 
 #include <QApplication>
 #include <QWindow>
-#include <QDesktopWidget>
+#include <QScreen>
 
 DimDialog::DimDialog(MainWindow *window, QWidget *parent) :
     QDialog(parent),
@@ -38,7 +38,8 @@ DimDialog::DimDialog(MainWindow *window, QWidget *parent) :
 void DimDialog::show()
 {
     // set the geometry in the show so that we can fill the desktop (even on another monitor)
-    setGeometry(qApp->desktop()->screenGeometry(window->frameGeometry().center()));
+    QScreen *screen = qApp->screenAt(window->frameGeometry().center());
+    setGeometry((screen ? screen : qApp->primaryScreen())->geometry());
     emit visbilityChanged(true);
     QDialog::show();
 }

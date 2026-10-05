@@ -19,10 +19,12 @@ class MpvHandler : public QObject
 friend class BakaEngine;
     Q_OBJECT
 public:
-    explicit MpvHandler(int64_t wid, QObject *parent = 0);
+    explicit MpvHandler(QObject *parent = nullptr);
     ~MpvHandler();
 
     void Initialize();
+    void Shutdown(); // destroy the mpv instance (and its video window)
+    mpv_handle *mpvHandle()                 { return mpv; }
     const Mpv::FileInfo &getFileInfo()      { return fileInfo; }
     Mpv::PlayState getPlayState()           { return playState; }
     QString getFile()                       { return file; }
@@ -30,7 +32,7 @@ public:
     QString getScreenshotFormat()           { return screenshotFormat; }
     QString getScreenshotTemplate()         { return screenshotTemplate; }
     QString getScreenshotDir()              { return screenshotDir; }
-    QString getVo()                         { return vo; }
+    bool getInterpolation()                 { return interpolation; }
     QString getMsgLevel()                   { return msgLevel; }
     double getSpeed()                       { return speed; }
     int getTime()                           { return time; }
@@ -96,7 +98,6 @@ public slots:
 
     void Deinterlace(bool);
     void Interpolate(bool);
-    void Vo(QString);
 
     void MsgLevel(QString level);
 
@@ -131,7 +132,7 @@ private slots:
     void setScreenshotFormat(QString s)     { emit screenshotFormatChanged(screenshotFormat = s); }
     void setScreenshotTemplate(QString s)   { emit screenshotTemplateChanged(screenshotTemplate = s); }
     void setScreenshotDir(QString s)        { emit screenshotDirChanged(screenshotDir = s); }
-    void setVo(QString s)                   { emit voChanged(vo = s); }
+    void setInterpolation(bool b)           { emit interpolationChanged(interpolation = b); }
     void setMsgLevel(QString s)             { emit msgLevelChanged(msgLevel = s); }
     void setSpeed(double d)                 { emit speedChanged(speed = d); }
     void setTime(int i)                     { emit timeChanged(time = i); }
@@ -157,7 +158,7 @@ signals:
     void screenshotFormatChanged(QString);
     void screenshotTemplateChanged(QString);
     void screenshotDirChanged(QString);
-    void voChanged(QString);
+    void interpolationChanged(bool);
     void msgLevelChanged(QString);
     void speedChanged(double);
     void timeChanged(int);
@@ -185,7 +186,6 @@ private:
                 screenshotTemplate,
                 screenshotDir,
                 suffix,
-                vo,
                 msgLevel;
     double      speed = 1;
     int         time = 0,
@@ -198,7 +198,8 @@ private:
     bool        init = false,
                 playlistVisible = false,
                 subtitleVisibility = true,
-                mute = false;
+                mute = false,
+                interpolation = false;
     int         osdWidth,
                 osdHeight;
 };
