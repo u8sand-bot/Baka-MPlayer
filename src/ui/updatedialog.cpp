@@ -14,7 +14,6 @@ UpdateDialog::UpdateDialog(BakaEngine *baka, QWidget *parent) :
 {
     ui->setupUi(this);
 
-    ui->updateButton->setText(tr("&DOWNLOAD"));
     ui->timeRemainingLabel->setVisible(false);
 
     connect(baka->update, &UpdateManager::progressSignal, this,
@@ -36,7 +35,14 @@ UpdateDialog::UpdateDialog(BakaEngine *baka, QWidget *parent) :
     connect(ui->updateButton, &QPushButton::clicked, this,
             [=]
             {
-                QDesktopServices::openUrl(QUrl(baka->update->getInfo().value("url", Util::DownloadFileUrl())));
+                if(baka->update->CanInstall())
+                {
+                    ui->updateButton->setEnabled(false);
+                    if(!baka->update->InstallUpdate())
+                        ui->updateButton->setEnabled(true);
+                }
+                else
+                    QDesktopServices::openUrl(QUrl(baka->update->getInfo().value("url", Util::DownloadFileUrl())));
             });
 
     connect(ui->cancelButton, SIGNAL(clicked()),
@@ -70,14 +76,16 @@ void UpdateDialog::ShowInfo()
         return;
     }
     ui->plainTextEdit->setPlainText(info["bugfixes"]);
-    if(info["version"].trimmed() == BAKA_MPLAYER_VERSION)
+    if(baka->update->IsUpdateAvailable())
     {
-        ui->updateButton->setEnabled(false);
-        ui->updateLabel->setText(tr("You have the latest version!"));
+        ui->updateLabel->setText(tr("Update Available!\nVersion: %0").arg(info["version"]));
+        ui->updateButton->setText(baka->update->CanInstall() ? tr("&INSTALL") : tr("&DOWNLOAD"));
+        ui->updateButton->setEnabled(true);
     }
     else
     {
-        ui->updateLabel->setText(tr("Update Available!\nVersion: %0").arg(info["version"]));
-        ui->updateButton->setEnabled(true);
+        ui->updateLabel->setText(tr("You have the latest version!"));
+        ui->updateButton->setText(tr("&DOWNLOAD"));
+        ui->updateButton->setEnabled(false);
     }
 }

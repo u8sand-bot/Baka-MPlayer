@@ -12,6 +12,7 @@
 #include "updatemanager.h"
 #include "widgets/dimdialog.h"
 #include "util.h"
+#include "ui/updatedialog.h"
 
 BakaEngine::BakaEngine(QObject *parent):
     QObject(parent),
@@ -40,6 +41,15 @@ BakaEngine::BakaEngine(QObject *parent):
             [=](QString msg)
             {
                 Print(msg, "mpv");
+            });
+    connect(update, &UpdateManager::checkFinished,
+            [=](bool available)
+            {
+                // only the automatic startup check opens the dialog by itself;
+                // a manual check already has it open
+                if(autoUpdatePending && available)
+                    QMetaObject::invokeMethod(this, [=] { UpdateDialog::CheckForUpdates(this, window); }, Qt::QueuedConnection);
+                autoUpdatePending = false;
             });
     connect(update, &UpdateManager::messageSignal,
             [=](QString msg)

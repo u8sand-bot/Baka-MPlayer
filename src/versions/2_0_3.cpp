@@ -13,10 +13,8 @@
 #include <QJsonValueRef>
 #include <QDir>
 
-#if defined(Q_OS_WIN)
 #include <QDate>
 #include "updatemanager.h"
-#endif
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 4, 2)
 class QJsonValueRef2
@@ -75,14 +73,14 @@ void BakaEngine::Load2_0_3()
     window->setResume(QJsonValueRef2(root["resume"]).toBool(true));
     window->setHideAllControls(QJsonValueRef2(root["hideAllControls"]).toBool(false));
     window->setLang(QJsonValueRef2(root["lang"]).toString("auto"));
-#if defined(Q_OS_WIN)
-    QDate last = QDate::fromString(root["lastcheck"].toString()); // convert to date
-    if(last.daysTo(QDate::currentDate()) > 7) // been a week since we last checked?
+    autoUpdate = QJsonValueRef2(root["autoUpdate"]).toBool(true);
+    lastUpdateCheck = QDate::fromString(root["lastcheck"].toString(), Qt::ISODate);
+    if(autoUpdate && (!lastUpdateCheck.isValid() || lastUpdateCheck.daysTo(QDate::currentDate()) >= 7))
     {
+        autoUpdatePending = true;
         update->CheckForUpdates();
-        root["lastcheck"] = QDate::currentDate().toString();
+        lastUpdateCheck = QDate::currentDate();
     }
-#endif
     window->UpdateRecentFiles();
 
     // apply default shortcut mappings
@@ -149,6 +147,9 @@ void BakaEngine::SaveSettings()
     root["leftClickPlayPause"] = window->leftClickPlayPause;
     root["resume"] = window->resume;
     root["hideAllControls"] = window->hideAllControls;
+    root["autoUpdate"] = autoUpdate;
+    if(lastUpdateCheck.isValid())
+        root["lastcheck"] = lastUpdateCheck.toString(Qt::ISODate);
     root["version"] = version;
 
     QJsonArray recent_json;

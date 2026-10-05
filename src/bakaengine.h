@@ -2,6 +2,7 @@
 #define BAKAENGINE_H
 
 #include <QObject>
+#include <QDate>
 #include <QString>
 #include <QStringList>
 #include <QHash>
@@ -31,6 +32,10 @@ public:
     OverlayHandler *overlay;
     UpdateManager  *update;
     DimDialog      *dimDialog;
+
+    bool  autoUpdate = true;        // check for updates on startup (weekly)
+    QDate lastUpdateCheck;
+    bool  autoUpdatePending = false; // the running check was started automatically
 
     QSystemTrayIcon *sysTrayIcon;
     QMenu           *trayIconMenu;

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(baka-mplayer
-    VERSION 2.0.4
+    VERSION 2.1.0
     DESCRIPTION "A free and open source, cross-platform, libmpv based multimedia player"
     HOMEPAGE_URL "https://github.com/u8sand/Baka-MPlayer"
     LANGUAGES CXX)
@@ -17,6 +17,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 set(BAKA_SETTINGS_FILE "bakamplayer" CACHE STRING "Settings file name (without extension)")
+set(BAKA_UPDATE_REPO "u8sand/Baka-MPlayer" CACHE STRING "GitHub repository (owner/name) whose releases the updater follows")
 set(BAKA_LANG "" CACHE STRING "Force a language code instead of using the system locale")
 
 if(WIN32)
@@ -152,6 +153,7 @@ endif()
 target_compile_definitions(baka-mplayer PRIVATE
     BAKA_MPLAYER_VERSION="${PROJECT_VERSION}"
     SETTINGS_FILE="${BAKA_SETTINGS_FILE}"
+    BAKA_UPDATE_REPO="${BAKA_UPDATE_REPO}"
     BAKA_MPLAYER_LANG_PATH=":/translations")
 if(BAKA_MPV_WID)
     target_compile_definitions(baka-mplayer PRIVATE BAKA_MPV_WID)
@@ -169,6 +171,9 @@ qt_add_translations(baka-mplayer
 
 if(APPLE)
     set_target_properties(baka-mplayer PROPERTIES OUTPUT_NAME Baka-MPlayer)
+elseif(WIN32)
+    # the name earlier releases shipped (and their updater restarts)
+    set_target_properties(baka-mplayer PROPERTIES OUTPUT_NAME "Baka MPlayer")
 endif()
 set_target_properties(baka-mplayer PROPERTIES
     MACOSX_BUNDLE_BUNDLE_NAME "Baka MPlayer"

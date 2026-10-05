@@ -19,7 +19,8 @@ On Linux, they are saved in the Qt location `~/.config/bakamplayer.ini`.
         ...
       },
       "lang": "",                  # the language used by the program (auto selects from locale)
-      "lastcheck": "",             # last time we checked for updates
+      "autoUpdate": b,             # check for updates once a week on startup (default: true)
+      "lastcheck": "",             # date we last checked for updates (YYYY-MM-DD)
       "maxRecent": n,              # the maximum files saved in recent
       "mpv": {                     # mpv specific options
         "screenshot-format": "",   # format of mpv's screenshots

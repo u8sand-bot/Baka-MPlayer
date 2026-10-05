@@ -81,7 +81,7 @@ cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/ucrt64/q
     -DCMAKE_EXE_LINKER_FLAGS=-static
 cmake --build build
 ```
-Put `build/baka-mplayer.exe` next to `mpv-dev/libmpv-2.dll` (and optionally `yt-dlp.exe`) and it is ready to run. The configuration file is written next to the executable.
+Put `build/Baka MPlayer.exe` next to `mpv-dev/libmpv-2.dll` (and optionally `yt-dlp.exe`) and it is ready to run. The configuration file is written next to the executable.
 
 On Windows mpv draws into the player window itself (Direct3D 11, falling back to software rendering when there is no GPU driver), so no OpenGL driver is needed. When the player is started from a terminal its log is printed there; otherwise it is written to `baka-mplayer.log` next to the executable.
 

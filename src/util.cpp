@@ -11,12 +11,16 @@ namespace Util {
 
 QString VersionFileUrl()
 {
-    return "https://api.github.com/repos/u8sand/Baka-MPlayer/releases/latest";
+    // BAKA_UPDATE_URL overrides the release feed (for testing the updater)
+    const QString url = qEnvironmentVariable("BAKA_UPDATE_URL");
+    if(!url.isEmpty())
+        return url;
+    return QString("https://api.github.com/repos/%0/releases/latest").arg(BAKA_UPDATE_REPO);
 }
 
 QString DownloadFileUrl()
 {
-    return "https://github.com/u8sand/Baka-MPlayer/releases/latest";
+    return QString("https://github.com/%0/releases/latest").arg(BAKA_UPDATE_REPO);
 }
 
 QString FindYtdl()
