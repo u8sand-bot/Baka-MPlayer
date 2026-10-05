@@ -23,6 +23,7 @@ public:
     ~MpvHandler();
 
     void Initialize();
+    void Shutdown(); // destroy the mpv instance (and its video window)
     mpv_handle *mpvHandle()                 { return mpv; }
     const Mpv::FileInfo &getFileInfo()      { return fileInfo; }
     Mpv::PlayState getPlayState()           { return playState; }

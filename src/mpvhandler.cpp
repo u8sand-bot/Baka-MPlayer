@@ -27,7 +27,6 @@ MpvHandler::MpvHandler(QObject *parent):
         throw "Could not create mpv object";
 
     // set mpv options
-    mpv_set_option_string(mpv, "vo", "libmpv"); // render through MpvWidget (OpenGL render API)
     mpv_set_option_string(mpv, "input-cursor", "no");   // no mouse handling
     mpv_set_option_string(mpv, "cursor-autohide", "no");// no cursor-autohide, we handle that
     mpv_set_option_string(mpv, "ytdl", "yes"); // yt-dlp support
@@ -58,10 +57,15 @@ MpvHandler::MpvHandler(QObject *parent):
 
 MpvHandler::~MpvHandler()
 {
+    Shutdown();
+}
+
+void MpvHandler::Shutdown()
+{
     if(mpv)
     {
         mpv_terminate_destroy(mpv);
-        mpv = NULL;
+        mpv = nullptr;
     }
 }
 

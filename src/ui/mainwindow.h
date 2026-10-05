@@ -8,6 +8,7 @@
 #include <QWheelEvent>
 #include <QKeyEvent>
 #include <QEvent>
+#include <QCloseEvent>
 #include <QTimer>
 #include <QTranslator>
 #include <QHash>
@@ -58,6 +59,7 @@ protected:
     void mousePressEvent(QMouseEvent *event);       // pressed mouse down
     void mouseReleaseEvent(QMouseEvent *event);     // released mouse up
     void mouseMoveEvent(QMouseEvent *event);        // moved mouse on the form
+    void closeEvent(QCloseEvent *event);            // window is closing
     void leaveEvent(QEvent *event);                 // mouse left the form
     void SendMouseMove();                           // synthesize a mouse move at the cursor
     void mouseDoubleClickEvent(QMouseEvent *event); // double clicked the form

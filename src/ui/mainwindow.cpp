@@ -852,6 +852,7 @@ void MainWindow::Load(QString file)
     // this solves some issues with setting things before the constructor has ended
     menuVisible = ui->menubar->isVisible(); // does the OS use a menubar? (appmenu doesn't)
     baka->LoadSettings();
+    ui->mpvFrame->Configure(mpv->mpvHandle()); // video output options must precede initialization
     mpv->Initialize();
     ui->mpvFrame->Attach(mpv->mpvHandle());
     mpv->LoadFile(file);
@@ -959,6 +960,15 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
             autohide->start(500);
     }
     QMainWindow::mouseMoveEvent(event);
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    // Qt destroys the native window while closing, so mpv (whose video window
+    // may be embedded in it) has to be shut down first
+    ui->mpvFrame->Detach();
+    mpv->Shutdown();
+    QMainWindow::closeEvent(event);
 }
 
 void MainWindow::SendMouseMove()

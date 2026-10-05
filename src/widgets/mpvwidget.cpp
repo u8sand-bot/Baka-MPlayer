@@ -1,8 +1,10 @@
 #include "mpvwidget.h"
 
-#include <QOpenGLContext>
 #include <QPainter>
 #include <QMetaObject>
+
+#ifndef BAKA_MPV_WID
+#include <QOpenGLContext>
 
 static void *get_proc_address(void *ctx, const char *name)
 {
@@ -12,11 +14,17 @@ static void *get_proc_address(void *ctx, const char *name)
         return nullptr;
     return reinterpret_cast<void*>(glctx->getProcAddress(QByteArray(name)));
 }
+#endif
 
 MpvWidget::MpvWidget(QWidget *parent, Qt::WindowFlags f):
-    QOpenGLWidget(parent, f),
+    MpvWidgetBase(parent, f),
     albumArtImage(":/img/album-art.png")
 {
+#ifdef BAKA_MPV_WID
+    // mpv draws into this widget's native window
+    setAttribute(Qt::WA_NativeWindow);
+    setAttribute(Qt::WA_DontCreateNativeAncestors);
+#endif
 }
 
 MpvWidget::~MpvWidget()
@@ -24,17 +32,78 @@ MpvWidget::~MpvWidget()
     Detach();
 }
 
+void MpvWidget::Configure(mpv_handle *handle)
+{
+#ifdef BAKA_MPV_WID
+    int64_t wid = static_cast<int64_t>(winId());
+    mpv_set_option(handle, "wid", MPV_FORMAT_INT64, &wid);
+    // let keyboard input reach our window instead of mpv's embedded one
+    mpv_set_option_string(handle, "input-vo-keyboard", "no");
+#else
+    mpv_set_option_string(handle, "vo", "libmpv");
+#endif
+}
+
 void MpvWidget::Attach(mpv_handle *handle)
 {
     mpv = handle;
+#ifndef BAKA_MPV_WID
     if(glReady)
         createRenderContext();
+#endif
 }
 
 void MpvWidget::Detach()
 {
+#ifndef BAKA_MPV_WID
     freeRenderContext();
+#endif
     mpv = nullptr;
+}
+
+void MpvWidget::setAlbumArt(bool show)
+{
+    if(showAlbumArt == show)
+        return;
+    showAlbumArt = show;
+    update();
+}
+
+void MpvWidget::paintAlbumArt()
+{
+    QPainter painter(this);
+    painter.fillRect(rect(), Qt::black);
+    if(showAlbumArt && !albumArtImage.isNull())
+    {
+        QRect r = albumArtImage.rect();
+        r.moveCenter(rect().center());
+        painter.drawImage(r, albumArtImage);
+    }
+}
+
+#ifdef BAKA_MPV_WID
+
+void MpvWidget::paintEvent(QPaintEvent *)
+{
+    // visible whenever mpv has no video window of its own (idle, audio only)
+    paintAlbumArt();
+}
+
+void MpvWidget::maybeUpdate()
+{
+}
+
+#else
+
+void MpvWidget::initializeGL()
+{
+    glReady = true;
+    // the GL context is recreated when the widget is reparented or the top-level
+    // window is recreated (e.g. changing window flags); mpv must follow it
+    connect(context(), &QOpenGLContext::aboutToBeDestroyed,
+            this, &MpvWidget::freeRenderContext, Qt::DirectConnection);
+    if(mpv && !mpv_gl)
+        createRenderContext();
 }
 
 void MpvWidget::freeRenderContext()
@@ -46,25 +115,6 @@ void MpvWidget::freeRenderContext()
         mpv_gl = nullptr;
         doneCurrent();
     }
-}
-
-void MpvWidget::setAlbumArt(bool show)
-{
-    if(showAlbumArt == show)
-        return;
-    showAlbumArt = show;
-    update();
-}
-
-void MpvWidget::initializeGL()
-{
-    glReady = true;
-    // the GL context is recreated when the widget is reparented or the top-level
-    // window is recreated (e.g. changing window flags); mpv must follow it
-    connect(context(), &QOpenGLContext::aboutToBeDestroyed,
-            this, &MpvWidget::freeRenderContext, Qt::DirectConnection);
-    if(mpv && !mpv_gl)
-        createRenderContext();
 }
 
 void MpvWidget::createRenderContext()
@@ -90,14 +140,7 @@ void MpvWidget::paintGL()
 {
     if(showAlbumArt || !mpv_gl)
     {
-        QPainter painter(this);
-        painter.fillRect(rect(), Qt::black);
-        if(showAlbumArt && !albumArtImage.isNull())
-        {
-            QRect r = albumArtImage.rect();
-            r.moveCenter(rect().center());
-            painter.drawImage(r, albumArtImage);
-        }
+        paintAlbumArt();
         return;
     }
     renderMpv();
@@ -142,3 +185,5 @@ void MpvWidget::maybeUpdate()
     else
         update();
 }
+
+#endif

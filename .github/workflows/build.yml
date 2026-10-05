@@ -141,27 +141,6 @@ jobs:
         7z x -ompv-dev mpv-dev.7z > /dev/null
         ls mpv-dev
 
-    - name: Download software OpenGL (Mesa llvmpipe)
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        # Qt draws any window containing a QOpenGLWidget through OpenGL. On
-        # machines without a capable GL driver (VMs, basic display adapter)
-        # Qt falls back to opengl32sw.dll if it is next to the exe; without
-        # it the window renders blank white.
-        release=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
-          https://api.github.com/repos/pal1000/mesa-dist-win/releases/latest)
-        url=$(echo "$release" | grep -oE 'https://[^"]*/mesa3d-[0-9.]+-release-msvc\.7z' | head -n1)
-        if [ -z "$url" ]; then
-          echo "Could not find a mesa3d release-msvc asset; available assets:"
-          echo "$release" | grep -oE '"name": *"[^"]*"'
-          exit 1
-        fi
-        echo "Using $url"
-        curl -fsSL -o mesa.7z "$url"
-        7z x -omesa mesa.7z > /dev/null
-        ls mesa/x64
-
     - name: Build
       run: |
         # static archives don't record their own dependencies; append the
@@ -195,10 +174,6 @@ jobs:
         # GPU driver installed it; ship the Khronos loader (mpv falls back to
         # D3D11/OpenGL when no Vulkan driver is present)
         cp /ucrt64/bin/vulkan-1.dll dist/
-        # software OpenGL fallback (see above); newer Mesa splits the WGL
-        # driver into libgallium_wgl.dll, which the stub loads from its folder
-        cp mesa/x64/opengl32.dll dist/opengl32sw.dll
-        if [ -f mesa/x64/libgallium_wgl.dll ]; then cp mesa/x64/libgallium_wgl.dll dist/; fi
         # bundle yt-dlp for online streams (used when none is installed)
         curl -fsSL -o dist/yt-dlp.exe https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe
         ls -la dist

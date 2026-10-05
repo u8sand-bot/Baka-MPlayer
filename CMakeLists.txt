@@ -19,6 +19,12 @@ endif()
 set(BAKA_SETTINGS_FILE "bakamplayer" CACHE STRING "Settings file name (without extension)")
 set(BAKA_LANG "" CACHE STRING "Force a language code instead of using the system locale")
 
+if(WIN32)
+    set(BAKA_MPV_WID_DEFAULT ON)
+else()
+    set(BAKA_MPV_WID_DEFAULT OFF)
+endif()
+option(BAKA_MPV_WID "Embed mpv's own video window (wid) instead of rendering through OpenGL" ${BAKA_MPV_WID_DEFAULT})
 option(BAKA_STATIC_DEPS "Link third-party libraries statically (for a static Qt build)" OFF)
 if(BAKA_STATIC_DEPS)
     # must be set here: the platform modules override a -D cache value
@@ -147,6 +153,9 @@ target_compile_definitions(baka-mplayer PRIVATE
     BAKA_MPLAYER_VERSION="${PROJECT_VERSION}"
     SETTINGS_FILE="${BAKA_SETTINGS_FILE}"
     BAKA_MPLAYER_LANG_PATH=":/translations")
+if(BAKA_MPV_WID)
+    target_compile_definitions(baka-mplayer PRIVATE BAKA_MPV_WID)
+endif()
 if(BAKA_LANG)
     target_compile_definitions(baka-mplayer PRIVATE BAKA_MPLAYER_LANG="${BAKA_LANG}")
 endif()

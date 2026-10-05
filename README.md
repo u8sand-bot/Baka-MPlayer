@@ -83,7 +83,7 @@ cmake --build build
 ```
 Put `build/baka-mplayer.exe` next to `mpv-dev/libmpv-2.dll` (and optionally `yt-dlp.exe`) and it is ready to run. The configuration file is written next to the executable.
 
-Video is drawn with OpenGL. The prebuilt package includes Mesa's software renderer as `opengl32sw.dll`, which Qt uses automatically when no suitable OpenGL driver is installed (e.g. in a virtual machine). To force it, set the environment variable `QT_OPENGL=software` before starting the player.
+On Windows mpv draws into the player window itself (Direct3D 11, falling back to software rendering when there is no GPU driver), so no OpenGL driver is needed. When the player is started from a terminal its log is printed there; otherwise it is written to `baka-mplayer.log` next to the executable.
 
 ### macOS
 
